@@ -40,14 +40,6 @@ const Login = () => {
         }
     };
 
-    // Demo credentials for quick testing
-    const demoLogins = [
-        { email: 'admin@clinic.com', name: 'Admin' },
-        { email: 'doctor@clinic.com', name: 'Doctor' },
-        { email: 'receptionist@clinic.com', name: 'Receptionist' },
-        { email: 'patient@clinic.com', name: 'Patient' }
-    ];
-
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4">
             <div className="w-full max-w-md">
@@ -146,25 +138,6 @@ const Login = () => {
                             )}
                         </button>
                     </form>
-
-                    {/* Demo Credentials */}
-                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                        <p className="text-xs font-semibold text-blue-900 mb-3">Demo Credentials (Click to use)</p>
-                        <div className="space-y-2">
-                            {demoLogins.map((demo, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => {
-                                        setEmail(demo.email);
-                                        setPassword('password');
-                                    }}
-                                    className="w-full text-left text-xs bg-white hover:bg-blue-50 p-2 rounded border border-blue-200 text-slate-700 font-mono transition-colors"
-                                >
-                                    {demo.name}: {demo.email}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
 
                     {/* Divider */}
                     <div className="border-t border-slate-200 my-6"></div>

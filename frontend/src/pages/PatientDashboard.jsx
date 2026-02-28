@@ -1,84 +1,809 @@
-import { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
-import api from '../api/axiosInstance';
-import { Clock, FileText, FileHeart } from 'lucide-react';
+import {
+    Clock, FileText, Heart, Download, MessageSquare, Calendar, Pill, AlertCircle,
+    Settings, LogOut, User, Phone, TrendingUp, Zap, Shield, Eye, EyeOff, X, Save,
+    Brain, Send, Sparkles, AlertTriangle, CheckCircle, Loader2, FileSearch
+} from 'lucide-react';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import axiosInstance from '../api/axiosInstance';
 
 const PatientDashboard = () => {
-    const { user } = useContext(AuthContext);
-    const [timeline, setTimeline] = useState(null);
+    const navigate = useNavigate();
+    const { user, logout } = useContext(AuthContext);
+    const [activeTab, setActiveTab] = useState('timeline');
+    const [timeline, setTimeline] = useState([]);
+    const [appointments, setAppointments] = useState([]);
+    const [prescriptions, setPrescriptions] = useState([]);
+    const [showProfile, setShowProfile] = useState(false);
     const [loading, setLoading] = useState(true);
+    const [editingProfile, setEditingProfile] = useState(false);
+    const [profileData, setProfileData] = useState({
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: '',
+        age: '',
+        gender: '',
+        bloodType: '',
+        allergies: ''
+    });
+
+    // AI Advisor state
+    const [healthQuestion, setHealthQuestion] = useState('');
+    const [aiLoading, setAiLoading] = useState(false);
+    const [aiResponse, setAiResponse] = useState(null);
+    const [reportText, setReportText] = useState('');
+    const [reportType, setReportType] = useState('general');
+    const [reportAnalysis, setReportAnalysis] = useState(null);
+    const [reportLoading, setReportLoading] = useState(false);
+
+    // Mock health metrics
+    const healthMetrics = [
+        { month: 'Jan', bp: 120, heartRate: 72, weight: 75 },
+        { month: 'Feb', bp: 118, heartRate: 70, weight: 74.5 },
+        { month: 'Mar', bp: 122, heartRate: 73, weight: 75.5 },
+        { month: 'Apr', bp: 119, heartRate: 71, weight: 74 },
+        { month: 'May', bp: 120, heartRate: 72, weight: 74.2 },
+        { month: 'Jun', bp: 118, heartRate: 70, weight: 73.8 }
+    ];
 
     useEffect(() => {
-        const fetchTimeline = async () => {
-            try {
-                // Fetch the current patient's own timeline directly
-                const res = await api.get('/patients/me/timeline');
-                setTimeline(res.data.timeline);
-            } catch (err) {
-                console.error("Failed to fetch timeline", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchTimeline();
+        fetchData();
     }, []);
 
-    if (loading) return <div className="p-8">Loading history...</div>;
+    const fetchData = async () => {
+        try {
+            const timelineRes = await axiosInstance.get('/patients/me/timeline');
+            const appointmentsRes = await axiosInstance.get('/appointments');
+            const prescriptionsRes = await axiosInstance.get('/prescriptions');
+            
+            // Handle timeline response - it returns { patient, timeline: { appointments, prescriptions, diagnoses } }
+            let timelineData = [];
+            if (timelineRes.data?.timeline) {
+                const { appointments: tlAppointments, prescriptions: tlPrescriptions, diagnoses } = timelineRes.data.timeline;
+                // Combine all timeline items with a type label
+                timelineData = [
+                    ...(Array.isArray(tlAppointments) ? tlAppointments.map(a => ({ ...a, type: 'appointment' })) : []),
+                    ...(Array.isArray(tlPrescriptions) ? tlPrescriptions.map(p => ({ ...p, type: 'prescription' })) : []),
+                    ...(Array.isArray(diagnoses) ? diagnoses.map(d => ({ ...d, type: 'diagnosis' })) : [])
+                ].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+            } else if (Array.isArray(timelineRes.data)) {
+                timelineData = timelineRes.data;
+            }
+            
+            // Ensure data is always an array
+            const appointmentsData = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
+            const prescriptionsData = Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : [];
+            
+            setTimeline(timelineData);
+            setAppointments(appointmentsData);
+            setPrescriptions(prescriptionsData);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching data:', error);
+            setTimeline([]);
+            setAppointments([]);
+            setPrescriptions([]);
+            setLoading(false);
+        }
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate('/login');
+    };
+
+    // AI Health Advice function
+    const getHealthAdvice = async () => {
+        if (!healthQuestion.trim()) return;
+        
+        setAiLoading(true);
+        setAiResponse(null);
+        
+        try {
+            const response = await axiosInstance.post('/ai/health-advice', {
+                question: healthQuestion,
+                topic: 'general health'
+            });
+            setAiResponse(response.data);
+        } catch (error) {
+            console.error('Error getting health advice:', error);
+            setAiResponse({
+                advice: 'Sorry, I could not process your question at this time. Please try again later or consult a healthcare professional.',
+                riskLevel: 'unknown',
+                disclaimer: 'This is for informational purposes only. Always consult a healthcare professional for medical advice.'
+            });
+        } finally {
+            setAiLoading(false);
+        }
+    };
+
+    // Analyze Report function
+    const analyzeReport = async () => {
+        if (!reportText.trim()) return;
+        
+        setReportLoading(true);
+        setReportAnalysis(null);
+        
+        try {
+            const response = await axiosInstance.post('/ai/analyze-report', {
+                reportText,
+                reportType
+            });
+            setReportAnalysis(response.data);
+        } catch (error) {
+            console.error('Error analyzing report:', error);
+            setReportAnalysis({
+                analysis: 'Sorry, I could not analyze the report at this time. Please try again later.',
+                riskLevel: 'unknown',
+                disclaimer: 'This analysis is for informational purposes only.'
+            });
+        } finally {
+            setReportLoading(false);
+        }
+    };
+
+    const upcomingAppointments = (Array.isArray(appointments) ? appointments : [])
+        .filter(a => a.status === 'pending' || a.status === 'confirmed')
+        .slice(0, 3);
+
+    const recentPrescriptions = (Array.isArray(prescriptions) ? prescriptions : []).slice(0, 3);
+
+    // Calculate health score
+    const healthScore = 78; // Mock value
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-screen bg-gradient-to-br from-teal-50 to-green-50">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto mb-4"></div>
+                    <p className="text-slate-600">Loading your health dashboard...</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold text-slate-800 mb-8">Welcome, {user?.name}</h1>
+        <div className="min-h-screen bg-gradient-to-br from-teal-50 to-green-50">
+            {/* Sticky Header */}
+            <header className="sticky top-0 bg-white shadow-sm z-50">
+                <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-teal-600 to-green-600 rounded-lg flex items-center justify-center text-white font-bold">
+                            ❤️
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-900">Patient Portal</h1>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => setShowProfile(!showProfile)}
+                            className="p-2 hover:bg-slate-100 rounded-lg transition"
+                            title="Profile Settings"
+                        >
+                            <Settings className="w-5 h-5 text-slate-600" />
+                        </button>
+                        <div className="w-10 h-10 bg-teal-600 text-white rounded-full flex items-center justify-center font-bold cursor-pointer">
+                            {user?.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-3 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition"
+                        >
+                            <LogOut className="w-4 h-4" />
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </header>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8">
-                <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
-                    <Clock className="w-5 h-5 mr-2 text-primary" />
-                    Medical History Timeline
-                </h2>
+            {/* Profile Modal */}
+            {showProfile && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-slate-900">Health Profile</h2>
+                            <button onClick={() => setShowProfile(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
 
-                {!timeline ? (
-                    <p className="text-slate-500">No medical history found.</p>
-                ) : (
-                    <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
-
-                        {/* Render Appointments */}
-                        {timeline.appointments?.map((apt, i) => (
-                            <div key={`apt-${i}`} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-slate-100 text-slate-500 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                                    <Clock className="w-4 h-4" />
+                        {editingProfile ? (
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.name}
+                                        onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    />
                                 </div>
-                                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <h3 className="font-bold text-slate-800">Appointment</h3>
-                                        <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded-full">{apt.status}</span>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Age</label>
+                                        <input
+                                            type="number"
+                                            value={profileData.age}
+                                            onChange={(e) => setProfileData({ ...profileData, age: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        />
                                     </div>
-                                    <p className="text-sm text-slate-500">Dr. {apt.doctorId?.name}</p>
-                                    <p className="text-xs text-slate-400 mt-2">{new Date(apt.date).toLocaleDateString()}</p>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Gender</label>
+                                        <select
+                                            value={profileData.gender}
+                                            onChange={(e) => setProfileData({ ...profileData, gender: e.target.value })}
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                        >
+                                            <option>Select</option>
+                                            <option>Male</option>
+                                            <option>Female</option>
+                                            <option>Other</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Blood Type</label>
+                                    <select
+                                        value={profileData.bloodType}
+                                        onChange={(e) => setProfileData({ ...profileData, bloodType: e.target.value })}
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        <option>Select Blood Type</option>
+                                        <option>O+</option>
+                                        <option>O-</option>
+                                        <option>A+</option>
+                                        <option>A-</option>
+                                        <option>B+</option>
+                                        <option>B-</option>
+                                        <option>AB+</option>
+                                        <option>AB-</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Allergies (if any)</label>
+                                    <input
+                                        type="text"
+                                        value={profileData.allergies}
+                                        onChange={(e) => setProfileData({ ...profileData, allergies: e.target.value })}
+                                        placeholder="e.g., Penicillin, Peanuts"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setEditingProfile(false)}
+                                        className="flex-1 bg-teal-600 text-white py-2 rounded-lg hover:bg-teal-700 flex items-center justify-center gap-2"
+                                    >
+                                        <Save className="w-4 h-4" />
+                                        Save
+                                    </button>
+                                    <button
+                                        onClick={() => setEditingProfile(false)}
+                                        className="flex-1 bg-slate-200 text-slate-700 py-2 rounded-lg hover:bg-slate-300"
+                                    >
+                                        Cancel
+                                    </button>
                                 </div>
                             </div>
-                        ))}
-
-                        {/* Render Prescriptions */}
-                        {timeline.prescriptions?.map((rx, i) => (
-                            <div key={`rx-${i}`} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
-                                <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-emerald-100 text-emerald-600 shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2">
-                                    <FileText className="w-4 h-4" />
+                        ) : (
+                            <div className="space-y-3">
+                                <div>
+                                    <p className="text-sm text-slate-600">Name</p>
+                                    <p className="font-medium text-slate-900">{profileData.name}</p>
                                 </div>
-                                <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-xl shadow-sm border border-slate-100">
-                                    <h3 className="font-bold text-slate-800 mb-1">Prescription ISSUED</h3>
-                                    <p className="text-sm text-slate-500 mb-3">{rx.medicines.length} Item(s) prescribed</p>
-                                    {rx.pdfUrl && (
-                                        <a href={`http://localhost:5000${rx.pdfUrl}`} target="_blank" rel="noreferrer" className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-lg hover:bg-emerald-100 transition-colors inline-block">
-                                            Download PDF
-                                        </a>
-                                    )}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p className="text-sm text-slate-600">Age</p>
+                                        <p className="font-medium text-slate-900">{profileData.age || 'Not set'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-sm text-slate-600">Blood Type</p>
+                                        <p className="font-medium text-slate-900">{profileData.bloodType || 'Not set'}</p>
+                                    </div>
+                                </div>
+                                {profileData.allergies && (
+                                    <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                                        <p className="text-xs text-red-600 font-bold">⚠️ ALLERGIES</p>
+                                        <p className="text-sm text-red-700">{profileData.allergies}</p>
+                                    </div>
+                                )}
+                                <div className="border-t pt-3">
+                                    <button
+                                        onClick={() => setEditingProfile(true)}
+                                        className="w-full bg-teal-50 text-teal-600 py-2 rounded-lg hover:bg-teal-100 font-medium"
+                                    >
+                                        Edit Profile
+                                    </button>
                                 </div>
                             </div>
-                        ))}
+                        )}
+                    </div>
+                </div>
+            )}
 
+            <main className="max-w-7xl mx-auto px-6 py-8">
+                {/* Welcome Banner */}
+                <div className="bg-gradient-to-r from-teal-600 to-green-600 text-white rounded-xl p-6 mb-8 shadow-lg">
+                    <h2 className="text-3xl font-bold mb-2">Welcome back, {user?.name?.split(' ')[0]}! 👋</h2>
+                    <p className="text-teal-100">Your health is our priority. Keep track of your medical records and appointments</p>
+                </div>
+
+                {/* Health Score & Key Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition border-l-4 border-teal-600">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm font-medium">Health Score</p>
+                                <p className="text-3xl font-bold text-slate-900 mt-1">{healthScore}%</p>
+                                <p className="text-xs text-green-600 mt-2">Great! Keep it up 💪</p>
+                            </div>
+                            <Heart className="w-8 h-8 text-teal-600 opacity-20" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition border-l-4 border-emerald-600">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm font-medium">Upcoming Appointments</p>
+                                <p className="text-3xl font-bold text-slate-900 mt-1">{upcomingAppointments.length}</p>
+                                <p className="text-xs text-blue-600 mt-2">Next scheduled visit</p>
+                            </div>
+                            <Calendar className="w-8 h-8 text-emerald-600 opacity-20" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition border-l-4 border-purple-600">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm font-medium">Active Prescriptions</p>
+                                <p className="text-3xl font-bold text-slate-900 mt-1">{recentPrescriptions.length}</p>
+                                <p className="text-xs text-purple-600 mt-2">Current medications</p>
+                            </div>
+                            <Pill className="w-8 h-8 text-purple-600 opacity-20" />
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition border-l-4 border-orange-600">
+                        <div className="flex items-start justify-between">
+                            <div>
+                                <p className="text-slate-600 text-sm font-medium">Medical Records</p>
+                                <p className="text-3xl font-bold text-slate-900 mt-1">{timeline.length}</p>
+                                <p className="text-xs text-orange-600 mt-2">Timeline entries</p>
+                            </div>
+                            <FileText className="w-8 h-8 text-orange-600 opacity-20" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Tabs */}
+                <div className="flex gap-4 mb-8 border-b border-slate-200 overflow-x-auto">
+                    {['timeline', 'appointments', 'prescriptions', 'health-metrics', 'ai-advisor'].map((tab) => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-4 py-3 font-medium transition border-b-2 -mb-px whitespace-nowrap flex items-center gap-2 ${
+                                activeTab === tab
+                                    ? 'text-teal-600 border-teal-600'
+                                    : 'text-slate-600 border-transparent hover:text-slate-900'
+                            }`}
+                        >
+                            {tab === 'ai-advisor' && <Brain className="w-4 h-4" />}
+                            {tab.charAt(0).toUpperCase() + tab.slice(1).replace('-', ' ')}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Timeline Tab */}
+                {activeTab === 'timeline' && (
+                    <div className="bg-white rounded-lg p-6 shadow-sm">
+                        <h3 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                            <Clock className="w-5 h-5 text-teal-600" />
+                            Medical History Timeline
+                        </h3>
+
+                        {timeline.length > 0 ? (
+                            <div className="space-y-4">
+                                {timeline.map((entry, idx) => (
+                                    <div key={idx} className="border-l-4 border-teal-600 pl-4 pb-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+                                                {entry.type === 'prescription' ? <Pill className="w-5 h-5 text-teal-600" /> : <FileText className="w-5 h-5 text-teal-600" />}
+                                            </div>
+                                            <div className="flex-1">
+                                                <p className="font-bold text-slate-900">{entry.type?.charAt(0).toUpperCase() + entry.type?.slice(1)}</p>
+                                                <p className="text-sm text-slate-600 mt-1">{entry.notes || entry.description || 'Medical record'}</p>
+                                                <p className="text-xs text-slate-500 mt-2">
+                                                    📅 {new Date(entry.date || entry.createdAt).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            {entry.pdfUrl && (
+                                                <a
+                                                    href={entry.pdfUrl}
+                                                    download
+                                                    className="flex items-center gap-1 px-3 py-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 text-sm font-medium"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Download
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-slate-500 text-center py-8">No medical records yet</p>
+                        )}
                     </div>
                 )}
-            </div>
+
+                {/* Appointments Tab */}
+                {activeTab === 'appointments' && (
+                    <div>
+                        <div className="mb-6">
+                            <button className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium flex items-center gap-2">
+                                <Calendar className="w-5 h-5" />
+                                Book Appointment
+                            </button>
+                        </div>
+
+                        <div className="space-y-4">
+                            {upcomingAppointments.length > 0 ? (
+                                upcomingAppointments.map((apt, idx) => (
+                                    <div key={idx} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition border-l-4 border-teal-600">
+                                        <div className="flex items-start justify-between">
+                                            <div>
+                                                <p className="font-bold text-slate-900">Appointment</p>
+                                                <p className="text-sm text-slate-600 mt-1">
+                                                    📅 {new Date(apt.date).toLocaleDateString()} at {new Date(apt.date).toLocaleTimeString()}
+                                                </p>
+                                                <span className={`inline-block mt-2 px-3 py-1 text-xs font-medium rounded-full ${
+                                                    apt.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                                                    apt.status === 'pending' ? 'bg-amber-100 text-amber-700' :
+                                                    'bg-blue-100 text-blue-700'
+                                                }`}>
+                                                    {apt.status}
+                                                </span>
+                                            </div>
+                                            <button className="px-4 py-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 font-medium text-sm">
+                                                Message Doctor
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <div className="text-center py-8 bg-white rounded-lg">
+                                    <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                                    <p className="text-slate-600">No upcoming appointments</p>
+                                    <button className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
+                                        Schedule First Appointment
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Prescriptions Tab */}
+                {activeTab === 'prescriptions' && (
+                    <div className="grid gap-4">
+                        {recentPrescriptions.length > 0 ? (
+                            recentPrescriptions.map((rx, idx) => (
+                                <div key={idx} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition">
+                                    <div className="flex items-start justify-between">
+                                        <div className="flex-1">
+                                            <p className="font-bold text-slate-900 flex items-center gap-2">
+                                                <Pill className="w-5 h-5 text-purple-600" />
+                                                Prescription #{rx._id?.slice(-4)}
+                                            </p>
+                                            <p className="text-sm text-slate-600 mt-2">
+                                                <span className="font-medium">Doctor:</span> Dr. {rx.doctorId}
+                                            </p>
+                                            <p className="text-sm text-slate-600">
+                                                <span className="font-medium">Date:</span> {new Date(rx.createdAt).toLocaleDateString()}
+                                            </p>
+                                            {rx.instructions && (
+                                                <p className="text-sm text-slate-600 mt-2">
+                                                    <span className="font-medium">Instructions:</span> {rx.instructions}
+                                                </p>
+                                            )}
+                                        </div>
+                                        {rx.pdfUrl && (
+                                            <a
+                                                href={rx.pdfUrl}
+                                                download
+                                                className="flex items-center gap-1 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 font-medium text-sm whitespace-nowrap"
+                                            >
+                                                <Download className="w-4 h-4" />
+                                                Download PDF
+                                            </a>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-12 bg-white rounded-lg">
+                                <Pill className="w-12 h-12 text-slate-300 mx-auto mb-2" />
+                                <p className="text-slate-600">No prescriptions yet</p>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Health Metrics Tab */}
+                {activeTab === 'health-metrics' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div className="bg-white rounded-lg p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <TrendingUp className="w-5 h-5 text-teal-600" />
+                                Blood Pressure Trend
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={healthMetrics}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Line type="monotone" dataKey="bp" name="BP (mmHg)" stroke="#14b8a6" strokeWidth={2} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+
+                        <div className="bg-white rounded-lg p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Heart className="w-5 h-5 text-red-600" />
+                                Heart Rate & Weight
+                            </h3>
+                            <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={healthMetrics}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                                    <XAxis dataKey="month" />
+                                    <YAxis />
+                                    <Tooltip />
+                                    <Legend />
+                                    <Bar dataKey="heartRate" name="Heart Rate (bpm)" fill="#14b8a6" />
+                                    <Bar dataKey="weight" name="Weight (kg)" fill="#06b6d4" />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
+
+                {/* AI Advisor Tab */}
+                {activeTab === 'ai-advisor' && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* Health Advice Section */}
+                        <div className="bg-white rounded-xl p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Brain className="w-5 h-5 text-purple-600" />
+                                AI Health Advisor
+                                <span className="ml-auto text-xs bg-gradient-to-r from-purple-500 to-pink-500 text-white px-2 py-1 rounded-full">
+                                    <Sparkles className="w-3 h-3 inline mr-1" />
+                                    Powered by AI
+                                </span>
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Ask a health question
+                                    </label>
+                                    <textarea
+                                        value={healthQuestion}
+                                        onChange={(e) => setHealthQuestion(e.target.value)}
+                                        placeholder="e.g., What are good ways to improve my sleep quality? What foods help with blood pressure?"
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                                        rows={4}
+                                    />
+                                </div>
+                                
+                                <button
+                                    onClick={getHealthAdvice}
+                                    disabled={aiLoading || !healthQuestion.trim()}
+                                    className="w-full px-4 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg font-medium hover:from-purple-700 hover:to-pink-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
+                                >
+                                    {aiLoading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Getting advice...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-5 h-5" />
+                                            Get Health Advice
+                                        </>
+                                    )}
+                                </button>
+                                
+                                {/* AI Response */}
+                                {aiResponse && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className={`p-4 rounded-lg border ${
+                                            aiResponse.riskLevel === 'high' ? 'bg-red-50 border-red-200' :
+                                            aiResponse.riskLevel === 'medium' ? 'bg-amber-50 border-amber-200' :
+                                            aiResponse.riskLevel === 'low' ? 'bg-green-50 border-green-200' :
+                                            'bg-purple-50 border-purple-200'
+                                        }`}>
+                                            <div className="flex items-start gap-2 mb-2">
+                                                {aiResponse.riskLevel === 'high' ? (
+                                                    <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                                                ) : aiResponse.riskLevel === 'low' ? (
+                                                    <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                                                ) : (
+                                                    <Brain className="w-5 h-5 text-purple-600 flex-shrink-0 mt-0.5" />
+                                                )}
+                                                <div className="flex-1">
+                                                    <p className="text-slate-800 whitespace-pre-line">{aiResponse.advice}</p>
+                                                </div>
+                                            </div>
+                                            
+                                            {aiResponse.conditions && aiResponse.conditions.length > 0 && (
+                                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                                    <p className="text-sm font-medium text-slate-700 mb-2">Related topics:</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {aiResponse.conditions.map((condition, idx) => (
+                                                            <span key={idx} className="text-xs bg-white px-2 py-1 rounded-full border">
+                                                                {condition}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Disclaimer */}
+                                        <div className="p-3 bg-slate-100 rounded-lg">
+                                            <p className="text-xs text-slate-600 flex items-start gap-2">
+                                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                                {aiResponse.disclaimer || 'This information is for educational purposes only and should not replace professional medical advice. Always consult a healthcare provider for medical concerns.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Report Analysis Section */}
+                        <div className="bg-white rounded-xl p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <FileSearch className="w-5 h-5 text-teal-600" />
+                                Report Analyzer
+                            </h3>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Report Type
+                                    </label>
+                                    <select
+                                        value={reportType}
+                                        onChange={(e) => setReportType(e.target.value)}
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        <option value="general">General Report</option>
+                                        <option value="blood_test">Blood Test</option>
+                                        <option value="urine_test">Urine Test</option>
+                                        <option value="xray">X-Ray Report</option>
+                                        <option value="mri">MRI Report</option>
+                                        <option value="ct_scan">CT Scan Report</option>
+                                        <option value="prescription">Prescription</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Paste your report text
+                                    </label>
+                                    <textarea
+                                        value={reportText}
+                                        onChange={(e) => setReportText(e.target.value)}
+                                        placeholder="Paste the text content of your medical report here for AI analysis..."
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none font-mono text-sm"
+                                        rows={6}
+                                    />
+                                </div>
+                                
+                                <button
+                                    onClick={analyzeReport}
+                                    disabled={reportLoading || !reportText.trim()}
+                                    className="w-full px-4 py-3 bg-gradient-to-r from-teal-600 to-green-600 text-white rounded-lg font-medium hover:from-teal-700 hover:to-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
+                                >
+                                    {reportLoading ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 animate-spin" />
+                                            Analyzing report...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <FileSearch className="w-5 h-5" />
+                                            Analyze Report
+                                        </>
+                                    )}
+                                </button>
+                                
+                                {/* Report Analysis Result */}
+                                {reportAnalysis && (
+                                    <div className="mt-4 space-y-3">
+                                        <div className={`p-4 rounded-lg border ${
+                                            reportAnalysis.riskLevel === 'high' ? 'bg-red-50 border-red-200' :
+                                            reportAnalysis.riskLevel === 'medium' ? 'bg-amber-50 border-amber-200' :
+                                            reportAnalysis.riskLevel === 'low' ? 'bg-green-50 border-green-200' :
+                                            'bg-teal-50 border-teal-200'
+                                        }`}>
+                                            <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                                                {reportAnalysis.riskLevel === 'high' ? (
+                                                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                                                ) : reportAnalysis.riskLevel === 'low' ? (
+                                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                                ) : (
+                                                    <FileText className="w-5 h-5 text-teal-600" />
+                                                )}
+                                                Analysis Results
+                                            </h4>
+                                            <p className="text-slate-800 whitespace-pre-line">{reportAnalysis.analysis}</p>
+                                            
+                                            {reportAnalysis.findings && reportAnalysis.findings.length > 0 && (
+                                                <div className="mt-3 pt-3 border-t border-slate-200">
+                                                    <p className="text-sm font-medium text-slate-700 mb-2">Key Findings:</p>
+                                                    <ul className="space-y-1">
+                                                        {reportAnalysis.findings.map((finding, idx) => (
+                                                            <li key={idx} className="text-sm text-slate-700 flex items-start gap-2">
+                                                                <span className="text-teal-600">•</span>
+                                                                {finding}
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Disclaimer */}
+                                        <div className="p-3 bg-slate-100 rounded-lg">
+                                            <p className="text-xs text-slate-600 flex items-start gap-2">
+                                                <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                                {reportAnalysis.disclaimer || 'This analysis is for informational purposes only. Please consult your doctor for proper interpretation of your medical reports.'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        
+                        {/* Quick Health Tips */}
+                        <div className="lg:col-span-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Sparkles className="w-5 h-5 text-purple-600" />
+                                Quick Health Tips
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mb-3">
+                                        <Heart className="w-5 h-5 text-green-600" />
+                                    </div>
+                                    <h4 className="font-medium text-slate-900 mb-1">Stay Hydrated</h4>
+                                    <p className="text-sm text-slate-600">Drink at least 8 glasses of water daily for optimal health.</p>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mb-3">
+                                        <Clock className="w-5 h-5 text-blue-600" />
+                                    </div>
+                                    <h4 className="font-medium text-slate-900 mb-1">Sleep Well</h4>
+                                    <p className="text-sm text-slate-600">Aim for 7-9 hours of quality sleep each night.</p>
+                                </div>
+                                <div className="bg-white rounded-lg p-4 shadow-sm">
+                                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center mb-3">
+                                        <TrendingUp className="w-5 h-5 text-orange-600" />
+                                    </div>
+                                    <h4 className="font-medium text-slate-900 mb-1">Stay Active</h4>
+                                    <p className="text-sm text-slate-600">30 minutes of moderate exercise daily improves overall health.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </main>
         </div>
     );
 };

@@ -2,7 +2,7 @@ import { useState, useContext } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axiosInstance';
-import { Activity, User, Mail, Lock, Briefcase, ArrowRight, Check, Eye, EyeOff } from 'lucide-react';
+import { Activity, User, Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 
 const Register = () => {
     const [name, setName] = useState('');
@@ -58,13 +58,6 @@ const Register = () => {
             setLoading(false);
         }
     };
-
-    const roles = [
-        { value: 'Patient', label: 'Patient', icon: '👤', color: 'blue' },
-        { value: 'Doctor', label: 'Doctor', icon: '👨‍⚕️', color: 'emerald' },
-        { value: 'Receptionist', label: 'Receptionist', icon: '👨‍💼', color: 'orange' },
-        { value: 'Admin', label: 'Administrator', icon: '👑', color: 'purple' }
-    ];
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center p-4 py-8">
@@ -177,31 +170,6 @@ const Register = () => {
                                         {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Role Selection */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-3">What's your role?</label>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                                {roles.map((r) => (
-                                    <button
-                                        key={r.value}
-                                        type="button"
-                                        onClick={() => setRole(r.value)}
-                                        className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-2 ${
-                                            role === r.value
-                                                ? 'border-indigo-600 bg-indigo-50'
-                                                : 'border-slate-200 hover:border-slate-300'
-                                        }`}
-                                    >
-                                        <span className="text-2xl">{r.icon}</span>
-                                        <span className="text-xs font-medium text-slate-700">{r.label}</span>
-                                        {role === r.value && (
-                                            <Check className="w-4 h-4 text-indigo-600" />
-                                        )}
-                                    </button>
-                                ))}
                             </div>
                         </div>
 

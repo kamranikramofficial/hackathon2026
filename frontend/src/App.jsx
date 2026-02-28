@@ -7,10 +7,11 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
 
+
 import AdminDashboard from './pages/AdminDashboard';
-import PatientDashboard_Enhanced from './pages/PatientDashboard_Enhanced';
-import ReceptionistDashboard_Enhanced from './pages/ReceptionistDashboard_Enhanced';
-import DoctorDashboard_Enhanced from './pages/DoctorDashboard_Enhanced';
+import PatientDashboard from './pages/PatientDashboard.jsx';
+import ReceptionistDashboard from './pages/ReceptionistDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
 
 const NotFound = () => <div className="flex h-screen items-center justify-center text-red-600 font-bold text-2xl">404 - Not Found</div>;
 
@@ -33,21 +34,21 @@ function App() {
           {/* Doctor Routes */}
           <Route path="/doctor" element={
             <ProtectedRoute allowedRoles={['Doctor']}>
-              <DoctorDashboard_Enhanced />
+              <DoctorDashboard />
             </ProtectedRoute>
           } />
 
           {/* Receptionist Routes */}
           <Route path="/receptionist" element={
             <ProtectedRoute allowedRoles={['Receptionist']}>
-              <ReceptionistDashboard_Enhanced />
+              <ReceptionistDashboard />
             </ProtectedRoute>
           } />
 
           {/* Patient Routes */}
           <Route path="/patient" element={
             <ProtectedRoute allowedRoles={['Patient']}>
-              <PatientDashboard_Enhanced />
+              <PatientDashboard />
             </ProtectedRoute>
           } />
 
