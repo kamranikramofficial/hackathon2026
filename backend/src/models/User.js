@@ -14,7 +14,21 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['Free', 'Basic', 'Pro'],
         default: 'Free'
-    }
+    },
+    status: {
+        type: String,
+        enum: ['active', 'blocked', 'suspended', 'deleted'],
+        default: 'active'
+    },
+    specialization: { type: String }, // For doctors
+    phone: { type: String },
+    address: { type: String },
+    profileImage: { type: String },
+    statusUpdatedAt: { type: Date },
+    statusUpdatedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    deletedAt: { type: Date },
+    deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    lastLogin: { type: Date }
 }, { timestamps: true });
 
 // Pre-save middleware to hash passwords

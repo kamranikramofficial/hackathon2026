@@ -65,8 +65,30 @@ const getPatientTimeline = async (req, res) => {
 // @access  Private (Patient)
 const getMyTimeline = async (req, res) => {
     try {
-        const patient = await Patient.findOne({ userId: req.user._id });
-        if (!patient) return res.status(404).json({ message: 'Patient profile not found' });
+        // First try to find patient by userId
+        let patient = await Patient.findOne({ userId: req.user._id });
+        
+        // If no patient found by userId, try to find by email match in contact
+        if (!patient) {
+            patient = await Patient.findOne({ 
+                $or: [
+                    { contact: req.user.email },
+                    { name: req.user.name }
+                ]
+            });
+        }
+        
+        // If still no patient, return empty timeline
+        if (!patient) {
+            return res.json({
+                patient: null,
+                timeline: {
+                    appointments: [],
+                    prescriptions: [],
+                    diagnoses: []
+                }
+            });
+        }
 
         const patientId = patient._id;
         const appointments = await Appointment.find({ patientId }).sort({ date: -1 }).populate('doctorId', 'name');
@@ -82,6 +104,7 @@ const getMyTimeline = async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Error in getMyTimeline:', error);
         res.status(500).json({ message: error.message });
     }
 };

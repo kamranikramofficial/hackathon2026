@@ -22,6 +22,7 @@ const appointmentRoutes = require('./src/routes/appointmentRoutes');
 const prescriptionRoutes = require('./src/routes/prescriptionRoutes');
 const aiRoutes = require('./src/routes/aiRoutes');
 const analyticsRoutes = require('./src/routes/analyticsRoutes');
+const adminRoutes = require('./src/routes/adminRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/patients', patientRoutes);
@@ -29,6 +30,7 @@ app.use('/api/appointments', appointmentRoutes);
 app.use('/api/prescriptions', prescriptionRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve static PDF uploads
 app.use('/uploads', express.static('uploads'));

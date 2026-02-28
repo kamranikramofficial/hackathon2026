@@ -14,6 +14,15 @@ const protect = async (req, res, next) => {
                 return res.status(401).json({ message: 'Not authorized, user not found' });
             }
 
+            // Check if user is blocked or deleted
+            if (req.user.status === 'blocked' || req.user.status === 'deleted') {
+                return res.status(403).json({ message: 'Your account has been blocked or deleted' });
+            }
+
+            if (req.user.status === 'suspended') {
+                return res.status(403).json({ message: 'Your account has been suspended' });
+            }
+
             next();
         } catch (error) {
             res.status(401).json({ message: 'Not authorized, token failed' });
@@ -36,4 +45,31 @@ const authorize = (...roles) => {
     };
 };
 
-module.exports = { protect, authorize };
+// Admin only middleware
+const admin = (req, res, next) => {
+    if (req.user && req.user.role === 'Admin') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+};
+
+// Admin or Receptionist middleware
+const adminOrReceptionist = (req, res, next) => {
+    if (req.user && (req.user.role === 'Admin' || req.user.role === 'Receptionist')) {
+        next();
+    } else {
+        res.status(403).json({ message: 'Access denied. Admin or Receptionist only.' });
+    }
+};
+
+// Doctor only middleware
+const doctor = (req, res, next) => {
+    if (req.user && req.user.role === 'Doctor') {
+        next();
+    } else {
+        res.status(403).json({ message: 'Access denied. Doctor only.' });
+    }
+};
+
+module.exports = { protect, authorize, admin, adminOrReceptionist, doctor };
