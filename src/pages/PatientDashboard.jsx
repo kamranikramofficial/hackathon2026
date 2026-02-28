@@ -4,7 +4,7 @@ import { AuthContext } from '../context/AuthContext';
 import {
     Clock, FileText, Heart, Download, MessageSquare, Calendar, Pill, AlertCircle,
     Settings, LogOut, User, Phone, TrendingUp, Zap, Shield, Eye, EyeOff, X, Save,
-    Brain, Send, Sparkles, AlertTriangle, CheckCircle, Loader2, FileSearch
+    Brain, Send, Sparkles, AlertTriangle, CheckCircle, Loader2, FileSearch, Plus, Stethoscope
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import axiosInstance from '../api/axiosInstance';
@@ -37,6 +37,23 @@ const PatientDashboard = () => {
     const [reportType, setReportType] = useState('general');
     const [reportAnalysis, setReportAnalysis] = useState(null);
     const [reportLoading, setReportLoading] = useState(false);
+
+    // Appointment booking state
+    const [showBookingModal, setShowBookingModal] = useState(false);
+    const [doctors, setDoctors] = useState([]);
+    const [bookingData, setBookingData] = useState({
+        doctorId: '',
+        date: '',
+        time: '',
+        reason: ''
+    });
+    const [bookingLoading, setBookingLoading] = useState(false);
+    const [bookingMessage, setBookingMessage] = useState({ type: '', text: '' });
+
+    // Symptom checker state
+    const [symptoms, setSymptoms] = useState('');
+    const [diagnosisResult, setDiagnosisResult] = useState(null);
+    const [diagnosisLoading, setDiagnosisLoading] = useState(false);
 
     // Mock health metrics
     const healthMetrics = [
@@ -141,6 +158,100 @@ const PatientDashboard = () => {
             });
         } finally {
             setReportLoading(false);
+        }
+    };
+
+    // Fetch available doctors
+    const fetchDoctors = async () => {
+        try {
+            const response = await axiosInstance.get('/appointments/doctors');
+            setDoctors(Array.isArray(response.data) ? response.data : []);
+        } catch (error) {
+            console.error('Error fetching doctors:', error);
+            setDoctors([]);
+        }
+    };
+
+    // Open booking modal
+    const openBookingModal = () => {
+        fetchDoctors();
+        setShowBookingModal(true);
+        setBookingMessage({ type: '', text: '' });
+    };
+
+    // Book appointment
+    const bookAppointment = async () => {
+        if (!bookingData.doctorId || !bookingData.date || !bookingData.time) {
+            setBookingMessage({ type: 'error', text: 'Please select a doctor, date, and time' });
+            return;
+        }
+
+        setBookingLoading(true);
+        setBookingMessage({ type: '', text: '' });
+
+        try {
+            const dateTime = new Date(`${bookingData.date}T${bookingData.time}`);
+            const response = await axiosInstance.post('/appointments/book', {
+                doctorId: bookingData.doctorId,
+                date: dateTime.toISOString(),
+                reason: bookingData.reason
+            });
+
+            setBookingMessage({ type: 'success', text: response.data.message || 'Appointment booked successfully!' });
+            setBookingData({ doctorId: '', date: '', time: '', reason: '' });
+            
+            // Refresh appointments
+            setTimeout(() => {
+                fetchData();
+                setShowBookingModal(false);
+            }, 2000);
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            setBookingMessage({ 
+                type: 'error', 
+                text: error.response?.data?.message || 'Failed to book appointment. Please try again.' 
+            });
+        } finally {
+            setBookingLoading(false);
+        }
+    };
+
+    // Cancel appointment
+    const cancelAppointment = async (appointmentId) => {
+        if (!confirm('Are you sure you want to cancel this appointment?')) return;
+
+        try {
+            await axiosInstance.put(`/appointments/${appointmentId}/cancel`);
+            fetchData(); // Refresh
+        } catch (error) {
+            console.error('Error cancelling appointment:', error);
+            alert(error.response?.data?.message || 'Failed to cancel appointment');
+        }
+    };
+
+    // AI Symptom Checker
+    const checkSymptoms = async () => {
+        if (!symptoms.trim()) return;
+
+        setDiagnosisLoading(true);
+        setDiagnosisResult(null);
+
+        try {
+            const response = await axiosInstance.post('/ai/health-advice', {
+                question: `I have these symptoms: ${symptoms}. What could be the possible conditions and what should I do?`,
+                symptoms: symptoms.split(',').map(s => s.trim()),
+                topic: 'symptom analysis'
+            });
+            setDiagnosisResult(response.data);
+        } catch (error) {
+            console.error('Error checking symptoms:', error);
+            setDiagnosisResult({
+                advice: 'Unable to analyze symptoms. Please consult a healthcare professional.',
+                riskLevel: 'unknown',
+                disclaimer: 'Always seek professional medical advice for health concerns.'
+            });
+        } finally {
+            setDiagnosisLoading(false);
         }
     };
 
@@ -442,42 +553,79 @@ const PatientDashboard = () => {
                 {activeTab === 'appointments' && (
                     <div>
                         <div className="mb-6">
-                            <button className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium flex items-center gap-2">
-                                <Calendar className="w-5 h-5" />
-                                Book Appointment
+                            <button 
+                                onClick={openBookingModal}
+                                className="px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium flex items-center gap-2"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Book New Appointment
                             </button>
                         </div>
 
                         <div className="space-y-4">
-                            {upcomingAppointments.length > 0 ? (
-                                upcomingAppointments.map((apt, idx) => (
-                                    <div key={idx} className="bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition border-l-4 border-teal-600">
+                            {appointments.length > 0 ? (
+                                appointments.map((apt, idx) => (
+                                    <div key={apt._id || idx} className={`bg-white rounded-lg p-5 shadow-sm hover:shadow-md transition border-l-4 ${
+                                        apt.status === 'cancelled' ? 'border-red-400 opacity-60' :
+                                        apt.status === 'completed' ? 'border-green-600' :
+                                        apt.status === 'confirmed' ? 'border-blue-600' :
+                                        'border-teal-600'
+                                    }`}>
                                         <div className="flex items-start justify-between">
-                                            <div>
-                                                <p className="font-bold text-slate-900">Appointment</p>
-                                                <p className="text-sm text-slate-600 mt-1">
-                                                    📅 {new Date(apt.date).toLocaleDateString()} at {new Date(apt.date).toLocaleTimeString()}
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-3 mb-2">
+                                                    <Stethoscope className="w-5 h-5 text-teal-600" />
+                                                    <p className="font-bold text-slate-900">
+                                                        {apt.doctorId?.name ? `Dr. ${apt.doctorId.name}` : 'Appointment'}
+                                                    </p>
+                                                </div>
+                                                {apt.doctorId?.specialization && (
+                                                    <p className="text-sm text-slate-500 mb-2">{apt.doctorId.specialization}</p>
+                                                )}
+                                                <p className="text-sm text-slate-600">
+                                                    📅 {new Date(apt.date).toLocaleDateString('en-US', { 
+                                                        weekday: 'long', 
+                                                        year: 'numeric', 
+                                                        month: 'long', 
+                                                        day: 'numeric' 
+                                                    })}
                                                 </p>
-                                                <span className={`inline-block mt-2 px-3 py-1 text-xs font-medium rounded-full ${
-                                                    apt.status === 'confirmed' ? 'bg-green-100 text-green-700' :
+                                                <p className="text-sm text-slate-600">
+                                                    🕐 {new Date(apt.date).toLocaleTimeString('en-US', {
+                                                        hour: '2-digit',
+                                                        minute: '2-digit'
+                                                    })}
+                                                </p>
+                                                <span className={`inline-block mt-3 px-3 py-1 text-xs font-medium rounded-full ${
+                                                    apt.status === 'confirmed' ? 'bg-blue-100 text-blue-700' :
                                                     apt.status === 'pending' ? 'bg-amber-100 text-amber-700' :
-                                                    'bg-blue-100 text-blue-700'
+                                                    apt.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                                    apt.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                                    'bg-slate-100 text-slate-700'
                                                 }`}>
-                                                    {apt.status}
+                                                    {apt.status?.charAt(0).toUpperCase() + apt.status?.slice(1)}
                                                 </span>
                                             </div>
-                                            <button className="px-4 py-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 font-medium text-sm">
-                                                Message Doctor
-                                            </button>
+                                            {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                                                <button 
+                                                    onClick={() => cancelAppointment(apt._id)}
+                                                    className="px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium text-sm"
+                                                >
+                                                    Cancel
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
                                 ))
                             ) : (
-                                <div className="text-center py-8 bg-white rounded-lg">
+                                <div className="text-center py-12 bg-white rounded-lg">
                                     <Calendar className="w-12 h-12 text-slate-300 mx-auto mb-2" />
-                                    <p className="text-slate-600">No upcoming appointments</p>
-                                    <button className="mt-4 px-4 py-2 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium">
-                                        Schedule First Appointment
+                                    <p className="text-slate-600 mb-4">No appointments yet</p>
+                                    <button 
+                                        onClick={openBookingModal}
+                                        className="px-6 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium"
+                                    >
+                                        Schedule Your First Appointment
                                     </button>
                                 </div>
                             )}
@@ -770,6 +918,105 @@ const PatientDashboard = () => {
                                 )}
                             </div>
                         </div>
+
+                        {/* AI Symptom Checker */}
+                        <div className="lg:col-span-2 bg-white rounded-xl p-6 shadow-sm">
+                            <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                                <Stethoscope className="w-5 h-5 text-red-500" />
+                                AI Symptom Checker
+                                <span className="ml-auto text-xs bg-gradient-to-r from-red-500 to-orange-500 text-white px-2 py-1 rounded-full">
+                                    <AlertTriangle className="w-3 h-3 inline mr-1" />
+                                    Not a Diagnosis
+                                </span>
+                            </h3>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                            Describe your symptoms
+                                        </label>
+                                        <textarea
+                                            value={symptoms}
+                                            onChange={(e) => setSymptoms(e.target.value)}
+                                            placeholder="e.g., headache, fever, fatigue, sore throat, cough..."
+                                            className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                                            rows={4}
+                                        />
+                                        <p className="text-xs text-slate-500 mt-1">Separate multiple symptoms with commas</p>
+                                    </div>
+                                    
+                                    <button
+                                        onClick={checkSymptoms}
+                                        disabled={diagnosisLoading || !symptoms.trim()}
+                                        className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium hover:from-red-600 hover:to-orange-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition"
+                                    >
+                                        {diagnosisLoading ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Analyzing symptoms...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Stethoscope className="w-5 h-5" />
+                                                Check Symptoms
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+
+                                <div>
+                                    {diagnosisResult ? (
+                                        <div className={`p-4 rounded-lg border h-full ${
+                                            diagnosisResult.riskLevel === 'high' ? 'bg-red-50 border-red-200' :
+                                            diagnosisResult.riskLevel === 'medium' ? 'bg-amber-50 border-amber-200' :
+                                            diagnosisResult.riskLevel === 'low' ? 'bg-green-50 border-green-200' :
+                                            'bg-orange-50 border-orange-200'
+                                        }`}>
+                                            <h4 className="font-medium text-slate-900 mb-2 flex items-center gap-2">
+                                                {diagnosisResult.riskLevel === 'high' ? (
+                                                    <AlertTriangle className="w-5 h-5 text-red-600" />
+                                                ) : diagnosisResult.riskLevel === 'low' ? (
+                                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                                ) : (
+                                                    <AlertCircle className="w-5 h-5 text-orange-600" />
+                                                )}
+                                                Analysis Result
+                                            </h4>
+                                            <p className="text-sm text-slate-700 whitespace-pre-line mb-3">{diagnosisResult.advice}</p>
+                                            
+                                            {diagnosisResult.conditions && diagnosisResult.conditions.length > 0 && (
+                                                <div className="mb-3">
+                                                    <p className="text-xs font-medium text-slate-600 mb-1">Possible conditions:</p>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {diagnosisResult.conditions.map((c, i) => (
+                                                            <span key={i} className="text-xs bg-white px-2 py-1 rounded border">{c}</span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            
+                                            <p className="text-xs text-slate-500 italic">{diagnosisResult.disclaimer}</p>
+                                        </div>
+                                    ) : (
+                                        <div className="h-full flex items-center justify-center bg-slate-50 rounded-lg p-6 border border-dashed border-slate-200">
+                                            <div className="text-center">
+                                                <Stethoscope className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                                                <p className="text-sm text-slate-500">Enter your symptoms to get AI-powered analysis</p>
+                                                <p className="text-xs text-slate-400 mt-1">Results will appear here</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            
+                            <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-lg">
+                                <p className="text-xs text-red-700 flex items-start gap-2">
+                                    <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                    <strong>Important:</strong> This symptom checker is for informational purposes only and is not a substitute for professional medical advice, diagnosis, or treatment. If you are experiencing a medical emergency, please call emergency services immediately.
+                                </p>
+                            </div>
+                        </div>
                         
                         {/* Quick Health Tips */}
                         <div className="lg:col-span-2 bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6">
@@ -804,6 +1051,142 @@ const PatientDashboard = () => {
                     </div>
                 )}
             </main>
+
+            {/* Booking Modal */}
+            {showBookingModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                    <Calendar className="w-6 h-6 text-teal-600" />
+                                    Book Appointment
+                                </h2>
+                                <button
+                                    onClick={() => setShowBookingModal(false)}
+                                    className="p-2 hover:bg-slate-100 rounded-lg transition"
+                                >
+                                    <X className="w-5 h-5 text-slate-500" />
+                                </button>
+                            </div>
+
+                            {bookingMessage.text && (
+                                <div className={`mb-4 p-3 rounded-lg ${
+                                    bookingMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                                }`}>
+                                    <div className="flex items-center gap-2">
+                                        {bookingMessage.type === 'success' ? (
+                                            <CheckCircle className="w-5 h-5" />
+                                        ) : (
+                                            <AlertCircle className="w-5 h-5" />
+                                        )}
+                                        {bookingMessage.text}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Select Doctor *
+                                    </label>
+                                    <select
+                                        value={bookingData.doctorId}
+                                        onChange={(e) => setBookingData({ ...bookingData, doctorId: e.target.value })}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        <option value="">Choose a doctor</option>
+                                        {doctors.map((doc) => (
+                                            <option key={doc._id} value={doc._id}>
+                                                Dr. {doc.name} {doc.specialization ? `(${doc.specialization})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Select Date *
+                                    </label>
+                                    <input
+                                        type="date"
+                                        value={bookingData.date}
+                                        onChange={(e) => setBookingData({ ...bookingData, date: e.target.value })}
+                                        min={new Date().toISOString().split('T')[0]}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Select Time *
+                                    </label>
+                                    <select
+                                        value={bookingData.time}
+                                        onChange={(e) => setBookingData({ ...bookingData, time: e.target.value })}
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
+                                    >
+                                        <option value="">Choose a time slot</option>
+                                        <option value="09:00">09:00 AM</option>
+                                        <option value="09:30">09:30 AM</option>
+                                        <option value="10:00">10:00 AM</option>
+                                        <option value="10:30">10:30 AM</option>
+                                        <option value="11:00">11:00 AM</option>
+                                        <option value="11:30">11:30 AM</option>
+                                        <option value="12:00">12:00 PM</option>
+                                        <option value="14:00">02:00 PM</option>
+                                        <option value="14:30">02:30 PM</option>
+                                        <option value="15:00">03:00 PM</option>
+                                        <option value="15:30">03:30 PM</option>
+                                        <option value="16:00">04:00 PM</option>
+                                        <option value="16:30">04:30 PM</option>
+                                        <option value="17:00">05:00 PM</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Reason for Visit (Optional)
+                                    </label>
+                                    <textarea
+                                        value={bookingData.reason}
+                                        onChange={(e) => setBookingData({ ...bookingData, reason: e.target.value })}
+                                        placeholder="Describe your symptoms or reason for the appointment"
+                                        className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
+                                        rows={3}
+                                    />
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        onClick={() => setShowBookingModal(false)}
+                                        className="flex-1 px-4 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={bookAppointment}
+                                        disabled={bookingLoading}
+                                        className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                                    >
+                                        {bookingLoading ? (
+                                            <>
+                                                <Loader2 className="w-5 h-5 animate-spin" />
+                                                Booking...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Calendar className="w-5 h-5" />
+                                                Book Appointment
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
