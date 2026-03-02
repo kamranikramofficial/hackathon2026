@@ -7,7 +7,21 @@ import {
     Brain, Send, Sparkles, AlertTriangle, CheckCircle, Loader2, FileSearch, Plus, Stethoscope
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import axiosInstance from '../api/axiosInstance';
+import axiosInstance, { BACKEND_URL } from '../api/axiosInstance';
+
+// Helper to get full PDF URL
+const getPdfUrl = (pdfUrl) => {
+    if (!pdfUrl) return null;
+    // If already a full URL, return as is
+    if (pdfUrl.startsWith('http')) return pdfUrl;
+    // If it's an absolute Windows path, extract just the filename
+    if (pdfUrl.includes('\\') || pdfUrl.includes('C:')) {
+        const fileName = pdfUrl.split(/[\\\/]/).pop();
+        return `${BACKEND_URL}/uploads/prescriptions/${fileName}`;
+    }
+    // Otherwise prepend backend URL
+    return `${BACKEND_URL}${pdfUrl}`;
+};
 
 const PatientDashboard = () => {
     const navigate = useNavigate();
@@ -520,19 +534,28 @@ const PatientDashboard = () => {
                                     <div key={idx} className="border-l-4 border-teal-600 pl-4 pb-4">
                                         <div className="flex items-start gap-3">
                                             <div className="w-10 h-10 bg-teal-100 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
-                                                {entry.type === 'prescription' ? <Pill className="w-5 h-5 text-teal-600" /> : <FileText className="w-5 h-5 text-teal-600" />}
+                                                {entry.type === 'prescription' ? <Pill className="w-5 h-5 text-teal-600" /> : 
+                                                 entry.type === 'appointment' ? <Calendar className="w-5 h-5 text-teal-600" /> :
+                                                 <FileText className="w-5 h-5 text-teal-600" />}
                                             </div>
                                             <div className="flex-1">
                                                 <p className="font-bold text-slate-900">{entry.type?.charAt(0).toUpperCase() + entry.type?.slice(1)}</p>
-                                                <p className="text-sm text-slate-600 mt-1">{entry.notes || entry.description || 'Medical record'}</p>
+                                                <p className="text-sm text-slate-600 mt-1">
+                                                    {entry.type === 'prescription' 
+                                                        ? `${entry.medicines?.length || 0} medicines - ${entry.instructions || 'No instructions'}`
+                                                        : entry.type === 'appointment'
+                                                        ? `Status: ${entry.status} - Dr. ${entry.doctorId?.name || 'Unknown'}`
+                                                        : entry.notes || entry.description || 'Medical record'}
+                                                </p>
                                                 <p className="text-xs text-slate-500 mt-2">
                                                     📅 {new Date(entry.date || entry.createdAt).toLocaleDateString()}
                                                 </p>
                                             </div>
-                                            {entry.pdfUrl && (
+                                            {entry.type === 'prescription' && entry.pdfUrl && (
                                                 <a
-                                                    href={entry.pdfUrl}
-                                                    download
+                                                    href={getPdfUrl(entry.pdfUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
                                                     className="flex items-center gap-1 px-3 py-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 text-sm font-medium"
                                                 >
                                                     <Download className="w-4 h-4" />
@@ -646,7 +669,7 @@ const PatientDashboard = () => {
                                                 Prescription #{rx._id?.slice(-4)}
                                             </p>
                                             <p className="text-sm text-slate-600 mt-2">
-                                                <span className="font-medium">Doctor:</span> Dr. {rx.doctorId}
+                                                <span className="font-medium">Doctor:</span> Dr. {rx.doctorId?.name || 'Unknown'}
                                             </p>
                                             <p className="text-sm text-slate-600">
                                                 <span className="font-medium">Date:</span> {new Date(rx.createdAt).toLocaleDateString()}
@@ -659,8 +682,9 @@ const PatientDashboard = () => {
                                         </div>
                                         {rx.pdfUrl && (
                                             <a
-                                                href={rx.pdfUrl}
-                                                download
+                                                href={getPdfUrl(rx.pdfUrl)}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
                                                 className="flex items-center gap-1 px-4 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 font-medium text-sm whitespace-nowrap"
                                             >
                                                 <Download className="w-4 h-4" />

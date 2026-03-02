@@ -1,9 +1,23 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, CheckCircle, Stethoscope, BarChart3, Lock, Zap, Cloud, ArrowRight, Star } from 'lucide-react';
+import { Menu, X, CheckCircle, Stethoscope, BarChart3, Lock, Zap, Cloud, ArrowRight, Star, LogOut } from 'lucide-react';
+import { AuthContext } from '../context/AuthContext';
 
 const LandingPage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { user, logout } = useContext(AuthContext);
+
+    // Get dashboard route based on user role
+    const getDashboardRoute = () => {
+        if (!user) return '/login';
+        switch (user.role) {
+            case 'Admin': return '/admin';
+            case 'Doctor': return '/doctor';
+            case 'Receptionist': return '/receptionist';
+            case 'Patient': return '/patient';
+            default: return '/';
+        }
+    };
 
     const features = [
         {
@@ -130,10 +144,23 @@ const LandingPage = () => {
                             <a href="#features" className="text-slate-600 hover:text-indigo-600 transition-colors">Features</a>
                             <a href="#pricing" className="text-slate-600 hover:text-indigo-600 transition-colors">Pricing</a>
                             <a href="#testimonials" className="text-slate-600 hover:text-indigo-600 transition-colors">Testimonials</a>
-                            <Link to="/login" className="text-slate-600 hover:text-indigo-600 transition-colors">Login</Link>
-                            <Link to="/register" className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
-                                Get Started
-                            </Link>
+                            {user ? (
+                                <>
+                                    <Link to={getDashboardRoute()} className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all font-medium">
+                                        Dashboard
+                                    </Link>
+                                    <button onClick={logout} className="text-slate-600 hover:text-red-600 transition-colors flex items-center gap-1">
+                                        <LogOut className="w-4 h-4" /> Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link to="/login" className="text-slate-600 hover:text-indigo-600 transition-colors">Login</Link>
+                                    <Link to="/register" className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium">
+                                        Get Started
+                                    </Link>
+                                </>
+                            )}
                         </div>
 
                         {/* Mobile Menu Button */}
@@ -148,8 +175,21 @@ const LandingPage = () => {
                             <a href="#features" className="block px-4 py-2 text-slate-600 hover:text-indigo-600">Features</a>
                             <a href="#pricing" className="block px-4 py-2 text-slate-600 hover:text-indigo-600">Pricing</a>
                             <a href="#testimonials" className="block px-4 py-2 text-slate-600 hover:text-indigo-600">Testimonials</a>
-                            <Link to="/login" className="block px-4 py-2 text-slate-600 hover:text-indigo-600">Login</Link>
-                            <Link to="/register" className="block px-4 py-2 bg-indigo-600 text-white rounded-lg text-center font-medium">Get Started</Link>
+                            {user ? (
+                                <>
+                                    <Link to={getDashboardRoute()} className="block px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg text-center font-medium">
+                                        Dashboard
+                                    </Link>
+                                    <button onClick={logout} className="block w-full px-4 py-2 text-red-600 hover:text-red-700 text-left flex items-center gap-2">
+                                        <LogOut className="w-4 h-4" /> Logout
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    <Link to="/login" className="block px-4 py-2 text-slate-600 hover:text-indigo-600">Login</Link>
+                                    <Link to="/register" className="block px-4 py-2 bg-indigo-600 text-white rounded-lg text-center font-medium">Get Started</Link>
+                                </>
+                            )}
                         </div>
                     )}
                 </div>

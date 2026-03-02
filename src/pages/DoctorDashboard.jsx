@@ -7,7 +7,19 @@ import {
     TrendingUp, MessageSquare, Phone, Eye, EyeOff, Save, X
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import axiosInstance from '../api/axiosInstance';
+import axiosInstance, { BACKEND_URL } from '../api/axiosInstance';
+
+// Helper to get full PDF URL
+const getPdfUrl = (pdfUrl) => {
+    if (!pdfUrl) return null;
+    if (pdfUrl.startsWith('http')) return pdfUrl;
+    // If it's an absolute Windows path, extract just the filename
+    if (pdfUrl.includes('\\') || pdfUrl.includes('C:')) {
+        const fileName = pdfUrl.split(/[\\\/]/).pop();
+        return `${BACKEND_URL}/uploads/prescriptions/${fileName}`;
+    }
+    return `${BACKEND_URL}${pdfUrl}`;
+};
 
 const DoctorDashboard = () => {
     const navigate = useNavigate();
@@ -22,10 +34,21 @@ const DoctorDashboard = () => {
     const [aiResponse, setAiResponse] = useState(null);
     const [loadingAI, setLoadingAI] = useState(false);
     const [selectedPatient, setSelectedPatient] = useState(null);
-    const [prescriptionForm, setPrescriptionForm] = useState({ medicines: [{ name: '', dose: '' }] });
+    const [prescriptionForm, setPrescriptionForm] = useState({ medicines: [{ name: '', dose: '' }], instructions: '' });
     const [loading, setLoading] = useState(true);
     const [profileData, setProfileData] = useState({ name: user?.name || '', email: user?.email || '', phone: '', specialization: '' });
     const [editingProfile, setEditingProfile] = useState(false);
+    
+    // New state for modals
+    const [showAppointmentDetails, setShowAppointmentDetails] = useState(false);
+    const [selectedAppointment, setSelectedAppointment] = useState(null);
+    const [showPrescriptionModal, setShowPrescriptionModal] = useState(false);
+    const [showMessageModal, setShowMessageModal] = useState(false);
+    const [showTimelineModal, setShowTimelineModal] = useState(false);
+    const [patientTimeline, setPatientTimeline] = useState(null);
+    const [messageText, setMessageText] = useState('');
+    const [savingPrescription, setSavingPrescription] = useState(false);
+    const [sendingMessage, setSendingMessage] = useState(false);
 
     // Mock data for analytics
     const analyticsData = [
@@ -110,7 +133,102 @@ const DoctorDashboard = () => {
 
     const handleRemoveMedicine = (index) => {
         const newMedicines = prescriptionForm.medicines.filter((_, i) => i !== index);
-        setPrescriptionForm({ medicines: newMedicines });
+        setPrescriptionForm({ ...prescriptionForm, medicines: newMedicines });
+    };
+
+    // View appointment details
+    const handleViewAppointmentDetails = (apt) => {
+        setSelectedAppointment(apt);
+        setShowAppointmentDetails(true);
+    };
+
+    // Update appointment status
+    const handleUpdateAppointmentStatus = async (aptId, newStatus) => {
+        try {
+            await axiosInstance.put(`/appointments/${aptId}`, { status: newStatus });
+            setAppointments(appointments.map(apt => 
+                apt._id === aptId ? { ...apt, status: newStatus } : apt
+            ));
+            setShowAppointmentDetails(false);
+        } catch (error) {
+            console.error('Error updating appointment:', error);
+            alert('Failed to update appointment status');
+        }
+    };
+
+    // Open prescription modal for patient
+    const handleOpenPrescription = (patient = null) => {
+        if (patient) setSelectedPatient(patient);
+        setPrescriptionForm({ medicines: [{ name: '', dose: '' }], instructions: '' });
+        setShowPrescriptionModal(true);
+    };
+
+    // Save prescription
+    const handleSavePrescription = async () => {
+        if (!selectedPatient) {
+            alert('Please select a patient first');
+            return;
+        }
+        if (prescriptionForm.medicines.some(m => !m.name || !m.dose)) {
+            alert('Please fill in all medicine details');
+            return;
+        }
+        
+        setSavingPrescription(true);
+        try {
+            await axiosInstance.post('/prescriptions', {
+                patientId: selectedPatient._id,
+                medicines: prescriptionForm.medicines,
+                instructions: prescriptionForm.instructions
+            });
+            alert('Prescription created successfully!');
+            setShowPrescriptionModal(false);
+            setPrescriptionForm({ medicines: [{ name: '', dose: '' }], instructions: '' });
+            setSelectedPatient(null);
+        } catch (error) {
+            console.error('Error creating prescription:', error);
+            alert(error.response?.data?.message || 'Failed to create prescription');
+        }
+        setSavingPrescription(false);
+    };
+
+    // Open message modal
+    const handleOpenMessage = (patient = null) => {
+        if (patient) setSelectedPatient(patient);
+        setMessageText('');
+        setShowMessageModal(true);
+    };
+
+    // Send message (simulated - you can integrate with real messaging service)
+    const handleSendMessage = async () => {
+        if (!selectedPatient || !messageText.trim()) {
+            alert('Please select a patient and enter a message');
+            return;
+        }
+        
+        setSendingMessage(true);
+        // Simulate sending message
+        setTimeout(() => {
+            alert(`Message sent to ${selectedPatient.name}!`);
+            setShowMessageModal(false);
+            setMessageText('');
+            setSendingMessage(false);
+        }, 1000);
+    };
+
+    // View patient timeline
+    const handleViewTimeline = async (patient) => {
+        setSelectedPatient(patient);
+        try {
+            const res = await axiosInstance.get(`/patients/${patient._id}/timeline`);
+            setPatientTimeline(res.data);
+            setShowTimelineModal(true);
+        } catch (error) {
+            console.error('Error fetching timeline:', error);
+            // Show basic timeline modal anyway
+            setPatientTimeline({ timeline: { appointments: [], prescriptions: [], diagnoses: [] } });
+            setShowTimelineModal(true);
+        }
     };
 
     const upcomingAppointments = appointments.filter(a => a.status === 'pending').slice(0, 3);
@@ -347,7 +465,7 @@ const DoctorDashboard = () => {
                                         <div key={idx} className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
                                             <div className="flex items-start justify-between">
                                                 <div>
-                                                    <p className="font-medium text-slate-900">Patient ID: {apt.patientId}</p>
+                                                    <p className="font-medium text-slate-900">Patient: {apt.patientId?.name || 'Unknown'}</p>
                                                     <p className="text-sm text-slate-600 mt-1">
                                                         📅 {new Date(apt.date).toLocaleDateString()} at {new Date(apt.date).toLocaleTimeString()}
                                                     </p>
@@ -355,7 +473,10 @@ const DoctorDashboard = () => {
                                                         {apt.status}
                                                     </span>
                                                 </div>
-                                                <button className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium text-sm">
+                                                <button 
+                                                    onClick={() => handleViewAppointmentDetails(apt)}
+                                                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium text-sm"
+                                                >
                                                     View Details
                                                 </button>
                                             </div>
@@ -372,17 +493,23 @@ const DoctorDashboard = () => {
                             <h3 className="text-lg font-bold text-slate-900 mb-4">Quick Actions</h3>
                             <div className="space-y-3">
                                 <button
-                                    onClick={() => setShowAIChecker(!showAIChecker)}
+                                    onClick={() => setActiveTab('ai-checker')}
                                     className="w-full flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg hover:shadow-lg font-medium transition"
                                 >
                                     <Zap className="w-5 h-5" />
                                     AI Symptom Checker
                                 </button>
-                                <button className="w-full flex items-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:shadow-lg font-medium transition">
+                                <button 
+                                    onClick={() => handleOpenPrescription()}
+                                    className="w-full flex items-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:shadow-lg font-medium transition"
+                                >
                                     <Plus className="w-5 h-5" />
                                     Create Prescription
                                 </button>
-                                <button className="w-full flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:shadow-lg font-medium transition">
+                                <button 
+                                    onClick={() => handleOpenMessage()}
+                                    className="w-full flex items-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:shadow-lg font-medium transition"
+                                >
                                     <MessageSquare className="w-5 h-5" />
                                     Message Patient
                                 </button>
@@ -432,9 +559,20 @@ const DoctorDashboard = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                        <button className="w-full mt-4 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium text-sm">
-                                            View Timeline
-                                        </button>
+                                        <div className="flex gap-2 mt-4">
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleViewTimeline(patient); }}
+                                                className="flex-1 px-3 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium text-sm"
+                                            >
+                                                View Timeline
+                                            </button>
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); handleOpenPrescription(patient); }}
+                                                className="flex-1 px-3 py-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 font-medium text-sm"
+                                            >
+                                                Prescribe
+                                            </button>
+                                        </div>
                                     </div>
                                 ))
                             ) : (
@@ -488,20 +626,8 @@ const DoctorDashboard = () => {
 
                                     <div className="space-y-4">
                                         <div>
-                                            <p className="text-sm text-slate-600 font-medium">Possible Conditions:</p>
-                                            <div className="mt-2 space-y-2">
-                                                {aiResponse.conditions?.map((condition, idx) => (
-                                                    <div key={idx} className="flex items-center gap-2 p-2 bg-white rounded border border-slate-200">
-                                                        <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
-                                                        <span className="text-slate-700">{condition}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-sm text-slate-600 font-medium">Risk Level:</p>
-                                            <span className={`inline-block mt-1 px-4 py-2 rounded-full font-bold text-white ${
+                                            <p className="text-sm text-slate-600 font-medium mb-2">Risk Level:</p>
+                                            <span className={`inline-block px-4 py-2 rounded-full font-bold text-white ${
                                                 aiResponse.riskLevel === 'High' ? 'bg-red-600' :
                                                 aiResponse.riskLevel === 'Moderate' ? 'bg-amber-600' :
                                                 'bg-green-600'
@@ -511,10 +637,10 @@ const DoctorDashboard = () => {
                                         </div>
 
                                         <div>
-                                            <p className="text-sm text-slate-600 font-medium">Recommendation:</p>
-                                            <p className="mt-2 text-slate-700 p-3 bg-white rounded border border-slate-200">
-                                                {aiResponse.message || 'Consult with specialist if symptoms persist.'}
-                                            </p>
+                                            <p className="text-sm text-slate-600 font-medium mb-2">Analysis:</p>
+                                            <div className="p-4 bg-white rounded-lg border border-slate-200 whitespace-pre-line text-slate-700">
+                                                {aiResponse.analysis || aiResponse.message || 'No analysis available'}
+                                            </div>
                                         </div>
 
                                         <button className="w-full mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center justify-center gap-2">
@@ -568,6 +694,378 @@ const DoctorDashboard = () => {
                     </div>
                 )}
             </main>
+
+            {/* Appointment Details Modal */}
+            {showAppointmentDetails && selectedAppointment && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-slate-900">Appointment Details</h2>
+                            <button onClick={() => setShowAppointmentDetails(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div className="p-4 bg-slate-50 rounded-lg">
+                                <p className="text-sm text-slate-600">Patient</p>
+                                <p className="font-bold text-slate-900">{selectedAppointment.patientId?.name || 'Unknown'}</p>
+                                <p className="text-sm text-slate-600">{selectedAppointment.patientId?.contact || ''}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-lg">
+                                    <p className="text-sm text-slate-600">Date</p>
+                                    <p className="font-bold text-slate-900">{new Date(selectedAppointment.date).toLocaleDateString()}</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-lg">
+                                    <p className="text-sm text-slate-600">Time</p>
+                                    <p className="font-bold text-slate-900">{new Date(selectedAppointment.date).toLocaleTimeString()}</p>
+                                </div>
+                            </div>
+                            
+                            <div className="p-4 bg-slate-50 rounded-lg">
+                                <p className="text-sm text-slate-600">Status</p>
+                                <span className={`inline-block mt-1 px-3 py-1 rounded-full text-sm font-medium ${
+                                    selectedAppointment.status === 'completed' ? 'bg-green-100 text-green-700' :
+                                    selectedAppointment.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                                    'bg-amber-100 text-amber-700'
+                                }`}>
+                                    {selectedAppointment.status}
+                                </span>
+                            </div>
+                            
+                            {selectedAppointment.reason && (
+                                <div className="p-4 bg-slate-50 rounded-lg">
+                                    <p className="text-sm text-slate-600">Reason</p>
+                                    <p className="font-medium text-slate-900">{selectedAppointment.reason}</p>
+                                </div>
+                            )}
+                            
+                            <div className="flex gap-3 pt-4">
+                                {selectedAppointment.status === 'pending' && (
+                                    <>
+                                        <button
+                                            onClick={() => handleUpdateAppointmentStatus(selectedAppointment._id, 'completed')}
+                                            className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium flex items-center justify-center gap-2"
+                                        >
+                                            <CheckCircle className="w-4 h-4" />
+                                            Mark Completed
+                                        </button>
+                                        <button
+                                            onClick={() => handleUpdateAppointmentStatus(selectedAppointment._id, 'cancelled')}
+                                            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </>
+                                )}
+                                <button
+                                    onClick={() => {
+                                        setShowAppointmentDetails(false);
+                                        handleOpenPrescription(selectedAppointment.patientId);
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium flex items-center justify-center gap-2"
+                                >
+                                    <Pill className="w-4 h-4" />
+                                    Create Prescription
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Prescription Modal */}
+            {showPrescriptionModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8">
+                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-slate-900">Create Prescription</h2>
+                            <button onClick={() => setShowPrescriptionModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        {!selectedPatient ? (
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Select Patient</label>
+                                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
+                                    {patients.map((patient, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => setSelectedPatient(patient)}
+                                            className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                                        >
+                                            <p className="font-medium text-slate-900">{patient.name}</p>
+                                            <p className="text-sm text-slate-600">{patient.contact}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mb-4 p-3 bg-indigo-50 rounded-lg flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium text-indigo-900">Patient: {selectedPatient.name}</p>
+                                        <p className="text-sm text-indigo-700">{selectedPatient.contact}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedPatient(null)} className="text-indigo-600 hover:text-indigo-800 text-sm">
+                                        Change
+                                    </button>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Medicines</label>
+                                        {prescriptionForm.medicines.map((med, idx) => (
+                                            <div key={idx} className="flex gap-2 mb-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Medicine name"
+                                                    value={med.name}
+                                                    onChange={(e) => handleMedicineChange(idx, 'name', e.target.value)}
+                                                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    placeholder="Dosage (e.g., 1 tab x 3)"
+                                                    value={med.dose}
+                                                    onChange={(e) => handleMedicineChange(idx, 'dose', e.target.value)}
+                                                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                />
+                                                {prescriptionForm.medicines.length > 1 && (
+                                                    <button
+                                                        onClick={() => handleRemoveMedicine(idx)}
+                                                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+                                                    >
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={handleAddMedicine}
+                                            className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1"
+                                        >
+                                            <Plus className="w-4 h-4" />
+                                            Add Medicine
+                                        </button>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-2">Instructions</label>
+                                        <textarea
+                                            value={prescriptionForm.instructions}
+                                            onChange={(e) => setPrescriptionForm({ ...prescriptionForm, instructions: e.target.value })}
+                                            placeholder="Additional instructions for the patient..."
+                                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none h-24"
+                                        />
+                                    </div>
+                                    
+                                    <button
+                                        onClick={handleSavePrescription}
+                                        disabled={savingPrescription}
+                                        className="w-full px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                                    >
+                                        {savingPrescription ? (
+                                            <>
+                                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                                Saving...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Save className="w-4 h-4" />
+                                                Save Prescription
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Message Patient Modal */}
+            {showMessageModal && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-xl max-w-lg w-full mx-4 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-slate-900">Message Patient</h2>
+                            <button onClick={() => setShowMessageModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        {!selectedPatient ? (
+                            <div className="mb-6">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">Select Patient</label>
+                                <div className="max-h-48 overflow-y-auto border border-slate-200 rounded-lg">
+                                    {patients.map((patient, idx) => (
+                                        <div
+                                            key={idx}
+                                            onClick={() => setSelectedPatient(patient)}
+                                            className="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-b-0"
+                                        >
+                                            <p className="font-medium text-slate-900">{patient.name}</p>
+                                            <p className="text-sm text-slate-600">{patient.contact}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="mb-4 p-3 bg-blue-50 rounded-lg flex items-center justify-between">
+                                    <div>
+                                        <p className="font-medium text-blue-900">To: {selectedPatient.name}</p>
+                                        <p className="text-sm text-blue-700">{selectedPatient.contact}</p>
+                                    </div>
+                                    <button onClick={() => setSelectedPatient(null)} className="text-blue-600 hover:text-blue-800 text-sm">
+                                        Change
+                                    </button>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Message</label>
+                                    <textarea
+                                        value={messageText}
+                                        onChange={(e) => setMessageText(e.target.value)}
+                                        placeholder="Type your message here..."
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-32"
+                                    />
+                                </div>
+                                
+                                <button
+                                    onClick={handleSendMessage}
+                                    disabled={sendingMessage || !messageText.trim()}
+                                    className="w-full mt-4 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                                >
+                                    {sendingMessage ? (
+                                        <>
+                                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                                            Sending...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Send className="w-4 h-4" />
+                                            Send Message
+                                        </>
+                                    )}
+                                </button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Patient Timeline Modal */}
+            {showTimelineModal && selectedPatient && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-y-auto py-8">
+                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-slate-900">Patient Timeline</h2>
+                            <button onClick={() => setShowTimelineModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="mb-4 p-4 bg-indigo-50 rounded-lg">
+                            <p className="font-bold text-indigo-900">{selectedPatient.name}</p>
+                            <p className="text-sm text-indigo-700">{selectedPatient.contact} • {selectedPatient.age} yrs • {selectedPatient.gender}</p>
+                        </div>
+                        
+                        <div className="space-y-4 max-h-96 overflow-y-auto">
+                            {patientTimeline?.timeline?.appointments?.length > 0 && (
+                                <div>
+                                    <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                        <Calendar className="w-4 h-4 text-indigo-600" />
+                                        Appointments
+                                    </h4>
+                                    {patientTimeline.timeline.appointments.map((apt, idx) => (
+                                        <div key={idx} className="p-3 bg-slate-50 rounded-lg mb-2">
+                                            <p className="font-medium text-slate-900">{new Date(apt.date).toLocaleDateString()}</p>
+                                            <p className="text-sm text-slate-600">Status: {apt.status}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {patientTimeline?.timeline?.prescriptions?.length > 0 && (
+                                <div>
+                                    <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                        <Pill className="w-4 h-4 text-purple-600" />
+                                        Prescriptions
+                                    </h4>
+                                    {patientTimeline.timeline.prescriptions.map((rx, idx) => (
+                                        <div key={idx} className="p-3 bg-slate-50 rounded-lg mb-2 flex items-center justify-between">
+                                            <div>
+                                                <p className="font-medium text-slate-900">{new Date(rx.createdAt).toLocaleDateString()}</p>
+                                                <p className="text-sm text-slate-600">{rx.medicines?.length || 0} medicines prescribed</p>
+                                            </div>
+                                            {rx.pdfUrl && (
+                                                <a
+                                                    href={getPdfUrl(rx.pdfUrl)}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="flex items-center gap-1 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 text-sm font-medium"
+                                                >
+                                                    <Download className="w-4 h-4" />
+                                                    Download
+                                                </a>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {patientTimeline?.timeline?.diagnoses?.length > 0 && (
+                                <div>
+                                    <h4 className="font-bold text-slate-900 mb-2 flex items-center gap-2">
+                                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                                        AI Diagnoses
+                                    </h4>
+                                    {patientTimeline.timeline.diagnoses.map((diag, idx) => (
+                                        <div key={idx} className="p-3 bg-slate-50 rounded-lg mb-2">
+                                            <p className="font-medium text-slate-900">{new Date(diag.createdAt).toLocaleDateString()}</p>
+                                            <p className="text-sm text-slate-600">Risk: {diag.riskLevel}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                            
+                            {(!patientTimeline?.timeline?.appointments?.length && 
+                              !patientTimeline?.timeline?.prescriptions?.length && 
+                              !patientTimeline?.timeline?.diagnoses?.length) && (
+                                <p className="text-center text-slate-500 py-8">No timeline data available</p>
+                            )}
+                        </div>
+                        
+                        <div className="flex gap-3 mt-4 pt-4 border-t border-slate-200">
+                            <button
+                                onClick={() => {
+                                    setShowTimelineModal(false);
+                                    handleOpenPrescription(selectedPatient);
+                                }}
+                                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 font-medium flex items-center justify-center gap-2"
+                            >
+                                <Pill className="w-4 h-4" />
+                                New Prescription
+                            </button>
+                            <button
+                                onClick={() => {
+                                    setShowTimelineModal(false);
+                                    handleOpenMessage(selectedPatient);
+                                }}
+                                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium flex items-center justify-center gap-2"
+                            >
+                                <MessageSquare className="w-4 h-4" />
+                                Message
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

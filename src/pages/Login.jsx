@@ -1,4 +1,4 @@
-import { useState, useContext } from 'react';
+import { useState, useContext, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import api from '../api/axiosInstance';
@@ -11,8 +11,21 @@ const Login = () => {
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
 
-    const { login } = useContext(AuthContext);
+    const { user, login } = useContext(AuthContext);
     const navigate = useNavigate();
+
+    // Redirect if already logged in
+    useEffect(() => {
+        if (user) {
+            switch (user.role) {
+                case 'Admin': navigate('/admin'); break;
+                case 'Doctor': navigate('/doctor'); break;
+                case 'Receptionist': navigate('/receptionist'); break;
+                case 'Patient': navigate('/patient'); break;
+                default: navigate('/'); break;
+            }
+        }
+    }, [user, navigate]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
