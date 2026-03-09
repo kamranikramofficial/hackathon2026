@@ -132,10 +132,11 @@ const PatientDashboard = () => {
         
         try {
             const response = await axiosInstance.post('/ai/health-advice', {
-                question: healthQuestion,
-                topic: 'general health'
+                question: healthQuestion
             });
-            setAiResponse(response.data);
+            const data = response.data;
+            data.riskLevel = (data.riskLevel || 'unknown').toLowerCase().replace('moderate', 'medium');
+            setAiResponse(data);
         } catch (error) {
             console.error('Error getting health advice:', error);
             setAiResponse({
@@ -160,7 +161,9 @@ const PatientDashboard = () => {
                 reportText,
                 reportType
             });
-            setReportAnalysis(response.data);
+            const data = response.data;
+            data.riskLevel = (data.riskLevel || 'unknown').toLowerCase().replace('moderate', 'medium');
+            setReportAnalysis(data);
         } catch (error) {
             console.error('Error analyzing report:', error);
             setReportAnalysis({
@@ -272,11 +275,11 @@ const PatientDashboard = () => {
 
         try {
             const response = await axiosInstance.post('/ai/health-advice', {
-                question: `I have these symptoms: ${symptoms}. What could be the possible conditions and what should I do?`,
-                symptoms: symptoms.split(',').map(s => s.trim()),
-                topic: 'symptom analysis'
+                question: `I have these symptoms: ${symptoms}. What could be the possible conditions and what should I do?`
             });
-            setDiagnosisResult(response.data);
+            const data = response.data;
+            data.riskLevel = (data.riskLevel || 'unknown').toLowerCase().replace('moderate', 'medium');
+            setDiagnosisResult(data);
         } catch (error) {
             console.error('Error checking symptoms:', error);
             setDiagnosisResult({
