@@ -185,24 +185,6 @@ const PatientDashboard = () => {
                 return acc;
             }, []);
 
-        const endpoints = ['/appointments/doctors', '/doctors'];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await axiosInstance.get(endpoint);
-                if (Array.isArray(response.data) && response.data.length > 0) {
-                    setDoctors(response.data);
-                    return;
-                }
-            } catch (error) {
-                if (error.response?.status === 404 || error.response?.status === 403) {
-                    continue;
-                }
-                console.error('Error fetching doctors:', error);
-                break;
-            }
-        }
-
         setDoctors(uniqueDoctorsFromHistory);
         if (uniqueDoctorsFromHistory.length === 0) {
             setBookingMessage({
