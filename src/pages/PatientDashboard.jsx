@@ -86,10 +86,6 @@ const PatientDashboard = () => {
     const fetchData = async () => {
         try {
             const timelineRes = await axiosInstance.get('/patients/me/timeline');
-            const [appointmentsRes, prescriptionsRes] = await Promise.allSettled([
-                axiosInstance.get('/appointments'),
-                axiosInstance.get('/prescriptions')
-            ]);
             
             // Handle timeline response - it returns { patient, timeline: { appointments, prescriptions, diagnoses } }
             let timelineData = [];
@@ -109,18 +105,9 @@ const PatientDashboard = () => {
                 timelineData = timelineRes.data;
             }
             
-            // Some deployments may block one of these endpoints for Patient role.
-            // Fall back to timeline data so dashboard still loads.
-            const appointmentsData = appointmentsRes.status === 'fulfilled'
-                ? (Array.isArray(appointmentsRes.value.data) ? appointmentsRes.value.data : [])
-                : timelineAppointments;
-            const prescriptionsData = prescriptionsRes.status === 'fulfilled'
-                ? (Array.isArray(prescriptionsRes.value.data) ? prescriptionsRes.value.data : [])
-                : timelinePrescriptions;
-            
             setTimeline(timelineData);
-            setAppointments(appointmentsData);
-            setPrescriptions(prescriptionsData);
+            setAppointments(timelineAppointments);
+            setPrescriptions(timelinePrescriptions);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching data:', error);
@@ -188,30 +175,40 @@ const PatientDashboard = () => {
 
     // Fetch available doctors
     const fetchDoctors = async () => {
-        const endpoints = ['/appointments/doctors', '/doctors'];
-
-        for (const endpoint of endpoints) {
-            try {
-                const response = await axiosInstance.get(endpoint);
-                if (Array.isArray(response.data)) {
-                    setDoctors(response.data);
-                    return;
+        const doctorsFromAppointments = (appointments || [])
+            .map((apt) => apt?.doctorId)
+            .filter((doc) => doc && doc._id)
+            .reduce((acc, doc) => {
+                if (!acc.some((existing) => existing._id === doc._id)) {
+                    acc.push(doc);
                 }
-            } catch (error) {
-                // Try the next endpoint only when route is missing.
-                if (error.response?.status === 404) continue;
-                console.error('Error fetching doctors:', error);
-                setDoctors([]);
-                setBookingMessage({ type: 'error', text: 'Unable to load doctors right now. Please try again later.' });
-                return;
-            }
-        }
+                return acc;
+            }, []);
 
-        setDoctors([]);
-        setBookingMessage({
-            type: 'error',
-            text: 'Doctor list endpoint is not available on the server. Please contact support.'
+        const doctorsFromPrescriptions = (prescriptions || [])
+            .map((rx) => rx?.doctorId)
+            .filter((doc) => doc && doc._id)
+            .reduce((acc, doc) => {
+                if (!acc.some((existing) => existing._id === doc._id)) {
+                    acc.push(doc);
+                }
+                return acc;
+            }, []);
+
+        const mergedDoctors = [...doctorsFromAppointments];
+        doctorsFromPrescriptions.forEach((doc) => {
+            if (!mergedDoctors.some((existing) => existing._id === doc._id)) {
+                mergedDoctors.push(doc);
+            }
         });
+
+        setDoctors(mergedDoctors);
+        if (mergedDoctors.length === 0) {
+            setBookingMessage({
+                type: 'error',
+                text: 'No doctors available from your history. Please ask support to enable doctor listing API.'
+            });
+        }
     };
 
     // Open booking modal
