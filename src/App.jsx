@@ -24,33 +24,29 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={
-            <ProtectedRoute allowedRoles={['Admin']}>
-              <AdminDashboard />
-            </ProtectedRoute>
-          } />
-
-          {/* Doctor Routes */}
-          <Route path="/doctor" element={
-            <ProtectedRoute allowedRoles={['Doctor']}>
-              <DoctorDashboard />
-            </ProtectedRoute>
-          } />
-
-          {/* Receptionist Routes */}
-          <Route path="/receptionist" element={
-            <ProtectedRoute allowedRoles={['Receptionist']}>
-              <ReceptionistDashboard />
-            </ProtectedRoute>
-          } />
-
-          {/* Patient Routes */}
-          <Route path="/patient" element={
-            <ProtectedRoute allowedRoles={['Patient']}>
-              <PatientDashboard />
-            </ProtectedRoute>
-          } />
+          {/* All dashboard routes wrapped in Layout (Sidebar + content) */}
+          <Route element={<Layout />}>
+            <Route path="/admin" element={
+              <ProtectedRoute allowedRoles={['Admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/doctor" element={
+              <ProtectedRoute allowedRoles={['Doctor']}>
+                <DoctorDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/receptionist" element={
+              <ProtectedRoute allowedRoles={['Receptionist']}>
+                <ReceptionistDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/patient" element={
+              <ProtectedRoute allowedRoles={['Patient']}>
+                <PatientDashboard />
+              </ProtectedRoute>
+            } />
+          </Route>
 
           <Route path="*" element={<NotFound />} />
         </Routes>
