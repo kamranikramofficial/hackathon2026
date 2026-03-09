@@ -178,15 +178,19 @@ const PatientDashboard = () => {
 
     // Fetch available doctors
     const fetchDoctors = async () => {
-        try {
-            const res = await axiosInstance.get('/appointments/doctors');
-            const apiDoctors = Array.isArray(res.data) ? res.data : [];
-            if (apiDoctors.length > 0) {
-                setDoctors(apiDoctors);
-                return;
+        // Try multiple endpoints (auth/doctors is always available)
+        const endpoints = ['/auth/doctors', '/appointments/doctors'];
+        for (const endpoint of endpoints) {
+            try {
+                const res = await axiosInstance.get(endpoint);
+                const apiDoctors = Array.isArray(res.data) ? res.data : [];
+                if (apiDoctors.length > 0) {
+                    setDoctors(apiDoctors);
+                    return;
+                }
+            } catch (err) {
+                // Try next endpoint
             }
-        } catch (err) {
-            console.warn('Could not fetch doctors from API, falling back to history');
         }
 
         // Fallback: derive from appointment/prescription history
