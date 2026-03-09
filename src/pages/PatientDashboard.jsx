@@ -175,8 +175,8 @@ const PatientDashboard = () => {
 
     // Fetch available doctors
     const fetchDoctors = async () => {
-        const doctorsFromAppointments = (appointments || [])
-            .map((apt) => apt?.doctorId)
+        const uniqueDoctorsFromHistory = [...(appointments || []), ...(prescriptions || [])]
+            .map((item) => item?.doctorId)
             .filter((doc) => doc && doc._id)
             .reduce((acc, doc) => {
                 if (!acc.some((existing) => existing._id === doc._id)) {
@@ -185,28 +185,29 @@ const PatientDashboard = () => {
                 return acc;
             }, []);
 
-        const doctorsFromPrescriptions = (prescriptions || [])
-            .map((rx) => rx?.doctorId)
-            .filter((doc) => doc && doc._id)
-            .reduce((acc, doc) => {
-                if (!acc.some((existing) => existing._id === doc._id)) {
-                    acc.push(doc);
-                }
-                return acc;
-            }, []);
+        const endpoints = ['/appointments/doctors', '/doctors'];
 
-        const mergedDoctors = [...doctorsFromAppointments];
-        doctorsFromPrescriptions.forEach((doc) => {
-            if (!mergedDoctors.some((existing) => existing._id === doc._id)) {
-                mergedDoctors.push(doc);
+        for (const endpoint of endpoints) {
+            try {
+                const response = await axiosInstance.get(endpoint);
+                if (Array.isArray(response.data) && response.data.length > 0) {
+                    setDoctors(response.data);
+                    return;
+                }
+            } catch (error) {
+                if (error.response?.status === 404 || error.response?.status === 403) {
+                    continue;
+                }
+                console.error('Error fetching doctors:', error);
+                break;
             }
-        });
+        }
 
-        setDoctors(mergedDoctors);
-        if (mergedDoctors.length === 0) {
+        setDoctors(uniqueDoctorsFromHistory);
+        if (uniqueDoctorsFromHistory.length === 0) {
             setBookingMessage({
                 type: 'error',
-                text: 'No doctors available from your history. Please ask support to enable doctor listing API.'
+                text: 'No doctors are available right now. Please try again later.'
             });
         }
     };
