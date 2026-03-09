@@ -86,26 +86,37 @@ const PatientDashboard = () => {
     const fetchData = async () => {
         try {
             const timelineRes = await axiosInstance.get('/patients/me/timeline');
-            const appointmentsRes = await axiosInstance.get('/appointments');
-            const prescriptionsRes = await axiosInstance.get('/prescriptions');
+            const [appointmentsRes, prescriptionsRes] = await Promise.allSettled([
+                axiosInstance.get('/appointments'),
+                axiosInstance.get('/prescriptions')
+            ]);
             
             // Handle timeline response - it returns { patient, timeline: { appointments, prescriptions, diagnoses } }
             let timelineData = [];
+            let timelineAppointments = [];
+            let timelinePrescriptions = [];
             if (timelineRes.data?.timeline) {
                 const { appointments: tlAppointments, prescriptions: tlPrescriptions, diagnoses } = timelineRes.data.timeline;
+                timelineAppointments = Array.isArray(tlAppointments) ? tlAppointments : [];
+                timelinePrescriptions = Array.isArray(tlPrescriptions) ? tlPrescriptions : [];
                 // Combine all timeline items with a type label
                 timelineData = [
-                    ...(Array.isArray(tlAppointments) ? tlAppointments.map(a => ({ ...a, type: 'appointment' })) : []),
-                    ...(Array.isArray(tlPrescriptions) ? tlPrescriptions.map(p => ({ ...p, type: 'prescription' })) : []),
+                    ...timelineAppointments.map(a => ({ ...a, type: 'appointment' })),
+                    ...timelinePrescriptions.map(p => ({ ...p, type: 'prescription' })),
                     ...(Array.isArray(diagnoses) ? diagnoses.map(d => ({ ...d, type: 'diagnosis' })) : [])
                 ].sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
             } else if (Array.isArray(timelineRes.data)) {
                 timelineData = timelineRes.data;
             }
             
-            // Ensure data is always an array
-            const appointmentsData = Array.isArray(appointmentsRes.data) ? appointmentsRes.data : [];
-            const prescriptionsData = Array.isArray(prescriptionsRes.data) ? prescriptionsRes.data : [];
+            // Some deployments may block one of these endpoints for Patient role.
+            // Fall back to timeline data so dashboard still loads.
+            const appointmentsData = appointmentsRes.status === 'fulfilled'
+                ? (Array.isArray(appointmentsRes.value.data) ? appointmentsRes.value.data : [])
+                : timelineAppointments;
+            const prescriptionsData = prescriptionsRes.status === 'fulfilled'
+                ? (Array.isArray(prescriptionsRes.value.data) ? prescriptionsRes.value.data : [])
+                : timelinePrescriptions;
             
             setTimeline(timelineData);
             setAppointments(appointmentsData);
@@ -177,20 +188,37 @@ const PatientDashboard = () => {
 
     // Fetch available doctors
     const fetchDoctors = async () => {
-        try {
-            const response = await axiosInstance.get('/appointments/doctors');
-            setDoctors(Array.isArray(response.data) ? response.data : []);
-        } catch (error) {
-            console.error('Error fetching doctors:', error);
-            setDoctors([]);
+        const endpoints = ['/appointments/doctors', '/doctors'];
+
+        for (const endpoint of endpoints) {
+            try {
+                const response = await axiosInstance.get(endpoint);
+                if (Array.isArray(response.data)) {
+                    setDoctors(response.data);
+                    return;
+                }
+            } catch (error) {
+                // Try the next endpoint only when route is missing.
+                if (error.response?.status === 404) continue;
+                console.error('Error fetching doctors:', error);
+                setDoctors([]);
+                setBookingMessage({ type: 'error', text: 'Unable to load doctors right now. Please try again later.' });
+                return;
+            }
         }
+
+        setDoctors([]);
+        setBookingMessage({
+            type: 'error',
+            text: 'Doctor list endpoint is not available on the server. Please contact support.'
+        });
     };
 
     // Open booking modal
     const openBookingModal = () => {
-        fetchDoctors();
-        setShowBookingModal(true);
         setBookingMessage({ type: '', text: '' });
+        setShowBookingModal(true);
+        fetchDoctors();
     };
 
     // Book appointment
@@ -1117,6 +1145,7 @@ const PatientDashboard = () => {
                                     <select
                                         value={bookingData.doctorId}
                                         onChange={(e) => setBookingData({ ...bookingData, doctorId: e.target.value })}
+                                        disabled={doctors.length === 0}
                                         className="w-full px-4 py-3 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500"
                                     >
                                         <option value="">Choose a doctor</option>
@@ -1190,7 +1219,7 @@ const PatientDashboard = () => {
                                     </button>
                                     <button
                                         onClick={bookAppointment}
-                                        disabled={bookingLoading}
+                                        disabled={bookingLoading || doctors.length === 0}
                                         className="flex-1 px-4 py-3 bg-teal-600 text-white rounded-lg hover:bg-teal-700 font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                                     >
                                         {bookingLoading ? (
