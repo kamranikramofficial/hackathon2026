@@ -6,6 +6,8 @@ import Layout from './layouts/Layout';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import LandingPage from './pages/LandingPage';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 
 import AdminDashboard from './pages/AdminDashboard';
@@ -24,6 +26,8 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/register" element={<Register />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* All dashboard routes wrapped in Layout (Sidebar + content) */}
           <Route element={<Layout />}>
