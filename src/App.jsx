@@ -12,6 +12,7 @@ import AdminDashboard from './pages/AdminDashboard';
 import PatientDashboard from './pages/PatientDashboard.jsx';
 import ReceptionistDashboard from './pages/ReceptionistDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
+import ProfilePage from './pages/ProfilePage';
 
 const NotFound = () => <div className="flex h-screen items-center justify-center text-red-600 font-bold text-2xl">404 - Not Found</div>;
 
@@ -44,6 +45,11 @@ function App() {
             <Route path="/patient" element={
               <ProtectedRoute allowedRoles={['Patient']}>
                 <PatientDashboard />
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute allowedRoles={['Admin', 'Doctor', 'Receptionist', 'Patient']}>
+                <ProfilePage />
               </ProtectedRoute>
             } />
           </Route>
