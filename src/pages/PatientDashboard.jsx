@@ -175,6 +175,18 @@ const PatientDashboard = () => {
 
     // Fetch available doctors
     const fetchDoctors = async () => {
+        try {
+            const res = await axiosInstance.get('/appointments/doctors');
+            const apiDoctors = Array.isArray(res.data) ? res.data : [];
+            if (apiDoctors.length > 0) {
+                setDoctors(apiDoctors);
+                return;
+            }
+        } catch (err) {
+            console.warn('Could not fetch doctors from API, falling back to history');
+        }
+
+        // Fallback: derive from appointment/prescription history
         const uniqueDoctorsFromHistory = [...(appointments || []), ...(prescriptions || [])]
             .map((item) => item?.doctorId)
             .filter((doc) => doc && doc._id)
