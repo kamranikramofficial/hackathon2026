@@ -508,8 +508,31 @@ const LandingPage = () => {
                     {/* Chat Messages */}
                     <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-3">
                         {chatHistory.length === 0 && (
-                            <div className="flex items-center justify-center h-full text-slate-400">
-                                <p className="text-center text-sm">Start a conversation with the AI Assistant...</p>
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
+                                <p className="text-center text-sm font-medium">Start a conversation with the AI Assistant...</p>
+                                
+                                {/* Quick Questions */}
+                                {user && chatHistory.length === 0 && (
+                                    <div className="w-full space-y-2 px-2">
+                                        <p className="text-xs font-semibold text-slate-500 text-center">Quick questions:</p>
+                                        {[
+                                            'What are patient symptoms?',
+                                            'Is my data secure?',
+                                            'How does diagnosis work?',
+                                            'Tell me about features',
+                                            'What is your support?'
+                                        ].map((question, idx) => (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setUserQuestion(question)}
+                                                className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-400 rounded text-xs text-slate-700 hover:text-indigo-700 transition-colors font-medium"
+                                            >
+                                                {question}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                         {chatHistory.map((msg, idx) => (
