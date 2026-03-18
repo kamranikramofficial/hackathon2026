@@ -1,6 +1,6 @@
 import { useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Calendar, Activity, FileText, Settings, LogOut, Pill, Brain, BarChart3, X, Heart, UserCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, Activity, FileText, Settings, LogOut, Pill, Brain, BarChart3, X, Heart, UserCircle, Home } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 
 const Sidebar = ({ onClose }) => {
@@ -14,18 +14,22 @@ const Sidebar = ({ onClose }) => {
 
     const menuItems = {
         Admin: [
+            { name: 'Home', icon: Home, path: '/' },
             { name: 'Dashboard', icon: LayoutDashboard, path: '/admin' },
             { name: 'Profile', icon: UserCircle, path: '/profile' },
         ],
         Doctor: [
+            { name: 'Home', icon: Home, path: '/' },
             { name: 'Dashboard', icon: LayoutDashboard, path: '/doctor' },
             { name: 'Profile', icon: UserCircle, path: '/profile' },
         ],
         Receptionist: [
+            { name: 'Home', icon: Home, path: '/' },
             { name: 'Dashboard', icon: LayoutDashboard, path: '/receptionist' },
             { name: 'Profile', icon: UserCircle, path: '/profile' },
         ],
         Patient: [
+            { name: 'Home', icon: Home, path: '/' },
             { name: 'Dashboard', icon: LayoutDashboard, path: '/patient' },
             { name: 'Profile', icon: UserCircle, path: '/profile' },
         ],
