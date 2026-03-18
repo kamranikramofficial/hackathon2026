@@ -6,46 +6,60 @@ import { AuthContext } from '../context/AuthContext';
 const LandingPage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [userQuestion, setUserQuestion] = useState('');
-    const [aiResponse, setAiResponse] = useState('');
-    const [showAiResponse, setShowAiResponse] = useState(false);
     const [chatHistory, setChatHistory] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
     const { user, logout } = useContext(AuthContext);
 
-    // AI Response handler
+    // AI Response handler - calls backend API
     const handleAiQuestion = async (e) => {
         e.preventDefault();
         if (!userQuestion.trim()) return;
 
         // Add user question to chat
         const userMsg = { role: 'user', text: userQuestion };
-        setChatHistory([...chatHistory, userMsg]);
+        setChatHistory(prev => [...prev, userMsg]);
+        setLoading(true);
+        setError('');
 
-        // Simulate AI responses for common questions
-        const lowerQuestion = userQuestion.toLowerCase();
-        let response = '';
+        try {
+            // Call backend AI endpoint
+            const response = await fetch('/api/ai/health-advice', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': user ? `Bearer ${localStorage.getItem('token')}` : ''
+                },
+                body: JSON.stringify({
+                    question: userQuestion
+                })
+            });
 
-        if (lowerQuestion.includes('price') || lowerQuestion.includes('cost')) {
-            response = 'Our pricing starts at $99/month for the Starter plan, $299/month for Professional, and custom pricing for Enterprise. Each plan includes different features and patient limits.';
-        } else if (lowerQuestion.includes('support') || lowerQuestion.includes('help')) {
-            response = 'We offer 24/7 support via email and phone. Professional and Enterprise plans include priority support with response times under 2 hours.';
-        } else if (lowerQuestion.includes('security') || lowerQuestion.includes('safe')) {
-            response = 'AI Clinic Pro uses JWT authentication, role-based access control, encrypted data transmission, and is HIPAA-compliant for maximum security and data privacy.';
-        } else if (lowerQuestion.includes('offline') || lowerQuestion.includes('connection')) {
-            response = 'Yes! AI Clinic Pro works completely offline. All data syncs automatically when connection is restored, ensuring uninterrupted clinic operations.';
-        } else if (lowerQuestion.includes('features')) {
-            response = 'Our key features include patient management, appointment scheduling, AI-powered diagnosis assistance, real-time analytics, prescription generation, and offline-first architecture.';
-        } else if (lowerQuestion.includes('trial') || lowerQuestion.includes('free')) {
-            response = 'Yes! We offer a free 14-day trial for the Professional plan with full access to all features. No credit card required.';
-        } else if (lowerQuestion.includes('integration')) {
-            response = 'AI Clinic Pro integrates with major EHR systems, laboratory information systems, and billing platforms. Custom integrations are available on Enterprise plans.';
-        } else {
-            response = 'Great question! For more detailed information, please contact our support team at support@aiclinicpro.com or call +1-800-CLINIC-1. Our experts are available 24/7.';
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Please login to use the AI Assistant');
+                }
+                throw new Error('Failed to get AI response');
+            }
+
+            const data = await response.json();
+            const aiMsg = { 
+                role: 'ai', 
+                text: data.advice || data.message, 
+                disclaimer: data.disclaimer 
+            };
+            setChatHistory(prev => [...prev, aiMsg]);
+        } catch (err) {
+            setError(err.message);
+            const errorMsg = { 
+                role: 'ai', 
+                text: 'I encountered an error. ' + err.message + ' For support, contact us at support@aiclinicpro.com or call +1-800-CLINIC-1'
+            };
+            setChatHistory(prev => [...prev, errorMsg]);
+        } finally {
+            setLoading(false);
+            setUserQuestion('');
         }
-
-        setAiResponse(response);
-        setShowAiResponse(true);
-        setChatHistory([...chatHistory, userMsg, { role: 'ai', text: response }]);
-        setUserQuestion('');
     };
 
     // Get dashboard route based on user role
@@ -460,84 +474,108 @@ const LandingPage = () => {
 
                     {/* AI Q&A Section */}
                     <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-8 text-white">
-                            <div className="flex items-center gap-3 mb-2">
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
+                            <div className="flex items-center gap-3">
                                 <MessageCircle className="w-6 h-6" />
-                                <h3 className="text-2xl font-bold">AI Assistant</h3>
+                                <div>
+                                    <h3 className="text-2xl font-bold">AI Medical Assistant</h3>
+                                    <p className="text-sm opacity-90">Ask any health or clinic related questions</p>
+                                </div>
                             </div>
-                            <p className="opacity-90">Ask any question about AI Clinic Pro and get instant answers</p>
                         </div>
 
-                        <div className="p-8">
-                            {/* Chat Display */}
-                            {chatHistory.length > 0 && (
-                                <div className="mb-6 max-h-64 overflow-y-auto space-y-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                    {chatHistory.map((msg, idx) => (
-                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                            <div className={`max-w-xs px-4 py-2 rounded-lg ${
-                                                msg.role === 'user'
-                                                    ? 'bg-indigo-600 text-white rounded-br-none'
-                                                    : 'bg-slate-200 text-slate-900 rounded-bl-none'
-                                            }`}>
-                                                <p className="text-sm">{msg.text}</p>
+                        <div className="p-6">
+                            {/* Chat Messages */}
+                            <div className="min-h-64 max-h-96 overflow-y-auto mb-6 bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3">
+                                {chatHistory.length === 0 && (
+                                    <div className="flex items-center justify-center h-64 text-slate-400">
+                                        <p className="text-center">Start a conversation with the AI Assistant...</p>
+                                    </div>
+                                )}
+                                {chatHistory.map((msg, idx) => (
+                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                        <div className={`max-w-xs px-4 py-3 rounded-lg ${
+                                            msg.role === 'user'
+                                                ? 'bg-indigo-600 text-white rounded-br-none'
+                                                : 'bg-emerald-100 text-slate-900 rounded-bl-none'
+                                        }`}>
+                                            <p className="text-sm leading-relaxed">{msg.text}</p>
+                                            {msg.disclaimer && (
+                                                <p className="text-xs mt-2 opacity-75 italic">{msg.disclaimer}</p>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                {loading && (
+                                    <div className="flex justify-start">
+                                        <div className="bg-emerald-100 text-slate-900 px-4 py-3 rounded-lg rounded-bl-none">
+                                            <div className="flex gap-1">
+                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"></div>
+                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                             </div>
                                         </div>
-                                    ))}
-                                </div>
-                            )}
+                                    </div>
+                                )}
+                            </div>
 
-                            {showAiResponse && (
-                                <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                                    <p className="text-sm text-emerald-900"><span className="font-semibold">AI Response:</span> {aiResponse}</p>
+                            {error && (
+                                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg">
+                                    {error}
                                 </div>
                             )}
 
                             {/* Input Form */}
                             <form onSubmit={handleAiQuestion} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Ask your question</label>
-                                    <div className="flex gap-2">
-                                        <input
-                                            type="text"
-                                            value={userQuestion}
-                                            onChange={(e) => setUserQuestion(e.target.value)}
-                                            placeholder="e.g., What's included in the Professional plan? How is my data secured?"
-                                            className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-                                        />
-                                        <button
-                                            type="submit"
-                                            className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2"
-                                        >
-                                            <Send className="w-4 h-4" />
-                                            Send
-                                        </button>
-                                    </div>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={userQuestion}
+                                        onChange={(e) => setUserQuestion(e.target.value)}
+                                        disabled={loading}
+                                        placeholder="Ask me anything about AI Clinic Pro or health..."
+                                        className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                    />
+                                    <button
+                                        type="submit"
+                                        disabled={loading}
+                                        className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                                    >
+                                        <Send className="w-4 h-4" />
+                                        {loading ? 'Asking...' : 'Send'}
+                                    </button>
                                 </div>
 
-                                {/* Sample Questions */}
-                                <div className="border-t border-slate-200 pt-4">
-                                    <p className="text-sm font-medium text-slate-700 mb-3">Quick questions:</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {[
-                                            'What are your pricing plans?',
-                                            'Is my data secure?',
-                                            'Do you offer offline support?',
-                                            'What is your support availability?'
-                                        ].map((question, idx) => (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => {
-                                                    setUserQuestion(question);
-                                                }}
-                                                className="text-left px-3 py-2 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-300 rounded-lg text-sm text-slate-700 hover:text-indigo-600 transition-colors"
-                                            >
-                                                {question}
-                                            </button>
-                                        ))}
+                                {/* Quick Questions */}
+                                {chatHistory.length === 0 && (
+                                    <div className="border-t border-slate-200 pt-4">
+                                        <p className="text-sm font-medium text-slate-700 mb-3">Try asking about:</p>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            {[
+                                                'What can AI Clinic Pro help with?',
+                                                'Is the system secure for patient data?',
+                                                'How does the offline feature work?',
+                                                'Tell me about support availability'
+                                            ].map((question, idx) => (
+                                                <button
+                                                    key={idx}
+                                                    type="button"
+                                                    onClick={() => setUserQuestion(question)}
+                                                    className="text-left px-3 py-2 bg-slate-100 hover:bg-indigo-100 border border-slate-300 hover:border-indigo-400 rounded-lg text-sm text-slate-700 hover:text-indigo-700 transition-colors font-medium"
+                                                >
+                                                    {question}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                             </form>
+
+                            {user && (
+                                <p className="text-xs text-slate-500 mt-4 text-center">
+                                    Responses powered by AI - Please consult healthcare professionals for medical advice
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>
