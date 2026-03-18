@@ -507,7 +507,7 @@ const LandingPage = () => {
 
             {/* Chat Modal */}
             {chatOpen && (
-                <div className="fixed bottom-6 right-6 w-96 max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 flex flex-col h-96">
+                <div className="fixed bottom-6 right-6 w-96 max-w-2xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden z-50 flex flex-col h-96">
                     {/* Chat Header */}
                     <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex items-center justify-between">
                         <div className="flex items-center gap-3">
@@ -526,15 +526,15 @@ const LandingPage = () => {
                     </div>
 
                     {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-3">
+                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50 dark:bg-slate-900 space-y-3">
                         {chatHistory.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-400 space-y-4">
+                            <div className="flex flex-col items-center justify-center h-full text-slate-400 dark:text-slate-500 space-y-4">
                                 <p className="text-center text-sm font-medium">Start a conversation with the AI Assistant...</p>
                                 
                                 {/* Quick Questions */}
                                 {user && chatHistory.length === 0 && (
                                     <div className="w-full space-y-2 px-2">
-                                        <p className="text-xs font-semibold text-slate-500 text-center">Quick questions:</p>
+                                        <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 text-center">Quick questions:</p>
                                         {[
                                             'What are patient symptoms?',
                                             'Is my data secure?',
@@ -546,7 +546,7 @@ const LandingPage = () => {
                                                 key={idx}
                                                 type="button"
                                                 onClick={() => setUserQuestion(question)}
-                                                className="w-full text-left px-2 py-1.5 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-400 rounded text-xs text-slate-700 hover:text-indigo-700 transition-colors font-medium"
+                                                className="w-full text-left px-2 py-1.5 bg-white dark:bg-slate-700 hover:bg-indigo-50 dark:hover:bg-slate-600 border border-slate-200 dark:border-slate-600 hover:border-indigo-400 dark:hover:border-indigo-400 rounded text-xs text-slate-700 dark:text-slate-200 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors font-medium"
                                             >
                                                 {question}
                                             </button>
@@ -560,7 +560,7 @@ const LandingPage = () => {
                                 <div className={`max-w-xs px-4 py-2 rounded-lg ${
                                     msg.role === 'user'
                                         ? 'bg-indigo-600 text-white rounded-br-none'
-                                        : 'bg-emerald-100 text-slate-900 rounded-bl-none'
+                                        : 'bg-emerald-100 dark:bg-emerald-900 text-slate-900 dark:text-emerald-100 rounded-bl-none'
                                 }`}>
                                     <p className="text-sm leading-relaxed">{msg.text}</p>
                                     {msg.disclaimer && (
@@ -571,11 +571,11 @@ const LandingPage = () => {
                         ))}
                         {loading && (
                             <div className="flex justify-start">
-                                <div className="bg-emerald-100 text-slate-900 px-4 py-2 rounded-lg rounded-bl-none">
+                                <div className="bg-emerald-100 dark:bg-emerald-900 text-slate-900 dark:text-emerald-100 px-4 py-2 rounded-lg rounded-bl-none">
                                     <div className="flex gap-1">
-                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"></div>
-                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                        <div className="w-2 h-2 bg-slate-900 dark:bg-emerald-300 rounded-full animate-bounce"></div>
+                                        <div className="w-2 h-2 bg-slate-900 dark:bg-emerald-300 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                        <div className="w-2 h-2 bg-slate-900 dark:bg-emerald-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                                     </div>
                                 </div>
                             </div>
@@ -584,20 +584,20 @@ const LandingPage = () => {
 
                     {/* Error Message */}
                     {error && (
-                        <div className="mx-4 mt-2 p-2 bg-red-100 border border-red-300 text-red-700 text-xs rounded-lg">
-                            {error} {error.includes('login') && <Link to="/login" className="text-red-600 hover:text-red-800 font-semibold"> Login</Link>}
+                        <div className="mx-4 mt-2 p-2 bg-red-100 dark:bg-red-950 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-200 text-xs rounded-lg">
+                            {error} {error.includes('login') && <Link to="/login" className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-semibold"> Login</Link>}
                         </div>
                     )}
 
                     {/* Auth Message */}
                     {!user && chatHistory.length === 0 && (
-                        <div className="mx-4 mb-3 p-2 bg-blue-50 border border-blue-300 text-blue-900 text-xs rounded-lg">
-                            Please <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold underline">login</Link> to use AI
+                        <div className="mx-4 mb-3 p-2 bg-blue-50 dark:bg-blue-950 border border-blue-300 dark:border-blue-800 text-blue-900 dark:text-blue-200 text-xs rounded-lg">
+                            Please <Link to="/login" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold underline">login</Link> to use AI
                         </div>
                     )}
 
                     {/* Input Form */}
-                    <form onSubmit={handleAiQuestion} className="p-4 border-t border-slate-200 bg-white">
+                    <form onSubmit={handleAiQuestion} className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -605,7 +605,7 @@ const LandingPage = () => {
                                 onChange={(e) => setUserQuestion(e.target.value)}
                                 disabled={loading || !user}
                                 placeholder={user ? "Ask anything..." : "Login to ask"}
-                                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:bg-slate-100 disabled:cursor-not-allowed text-sm"
+                                className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent outline-none transition-all disabled:bg-slate-100 dark:disabled:bg-slate-800 disabled:cursor-not-allowed text-sm"
                             />
                             <button
                                 type="submit"
