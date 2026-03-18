@@ -1,10 +1,12 @@
 import { useContext } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, Calendar, Activity, FileText, Settings, LogOut, Pill, Brain, BarChart3, X, Heart, UserCircle, Home } from 'lucide-react';
+import { LayoutDashboard, Users, Calendar, Activity, FileText, Settings, LogOut, Pill, Brain, BarChart3, X, Heart, UserCircle, Home, Moon, Sun } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import { useTheme } from '../context/ThemeContext';
 
 const Sidebar = ({ onClose }) => {
     const { user, logout } = useContext(AuthContext);
+    const { isDark, toggleTheme } = useTheme();
     const navigate = useNavigate();
 
     const handleLogout = () => {
@@ -47,20 +49,20 @@ const Sidebar = ({ onClose }) => {
     const colors = roleColors[user?.role] || roleColors.Admin;
 
     return (
-        <div className="flex flex-col w-64 h-screen px-4 py-6 bg-white border-r border-slate-200 shadow-sm">
+        <div className="flex flex-col w-64 h-screen px-4 py-6 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 shadow-sm">
             {/* Logo + close button */}
             <div className="flex items-center justify-between mb-8 px-2">
                 <div className="flex items-center gap-3">
                     <div className={`w-9 h-9 bg-gradient-to-br ${colors.bg} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
                         AC
                     </div>
-                    <h2 className="text-lg font-bold text-slate-900">AI Clinic Pro</h2>
+                    <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI Clinic Pro</h2>
                 </div>
                 <button
                     onClick={onClose}
-                    className="p-1 rounded-lg hover:bg-slate-100 lg:hidden"
+                    className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 lg:hidden"
                 >
-                    <X className="w-5 h-5 text-slate-400" />
+                    <X className="w-5 h-5 text-slate-400 dark:text-slate-300" />
                 </button>
             </div>
 
@@ -83,7 +85,7 @@ const Sidebar = ({ onClose }) => {
                                 className={({ isActive }) =>
                                     `flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${isActive
                                         ? `${colors.activeBg} font-semibold`
-                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                                     }`
                                 }
                             >
@@ -95,20 +97,30 @@ const Sidebar = ({ onClose }) => {
                 </ul>
             </nav>
 
+            <div className="px-3 pb-3">
+                <button
+                    onClick={toggleTheme}
+                    className="flex items-center justify-center w-full px-3 py-2.5 text-sm font-medium rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                    {isDark ? <Sun className="w-4 h-4 mr-2 text-yellow-400" /> : <Moon className="w-4 h-4 mr-2" />}
+                    {isDark ? 'Light Mode' : 'Dark Mode'}
+                </button>
+            </div>
+
             {/* User info + logout */}
-            <div className="pt-4 border-t border-slate-200">
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="flex items-center px-3 mb-4">
                     <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${colors.bg} flex items-center justify-center text-white font-bold text-sm mr-3`}>
                         {user?.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-slate-900 truncate">{user?.name}</p>
-                        <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                        <p className="text-sm font-medium text-slate-900 dark:text-white truncate">{user?.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
                     </div>
                 </div>
                 <button
                     onClick={handleLogout}
-                    className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+                    className="flex items-center w-full px-3 py-2.5 text-sm font-medium text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                 >
                     <LogOut className="w-5 h-5 mr-3" />
                     Logout

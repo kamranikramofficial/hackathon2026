@@ -7,7 +7,7 @@ const Layout = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="flex h-screen bg-slate-50">
+        <div className="flex h-screen bg-slate-50 dark:bg-slate-950">
             {/* Mobile overlay */}
             {sidebarOpen && (
                 <div
@@ -24,14 +24,14 @@ const Layout = () => {
             {/* Main content */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
                 {/* Mobile top bar */}
-                <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200">
+                <div className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700">
                     <button
                         onClick={() => setSidebarOpen(true)}
-                        className="p-2 rounded-lg hover:bg-slate-100 transition"
+                        className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
                     >
-                        <Menu className="w-5 h-5 text-slate-600" />
+                        <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
                     </button>
-                    <span className="font-bold text-slate-900">AI Clinic Pro</span>
+                    <span className="font-bold text-slate-900 dark:text-white">AI Clinic Pro</span>
                 </div>
 
                 <div className="flex-1 overflow-y-auto">
