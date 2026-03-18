@@ -211,7 +211,7 @@ const ReceptionistDashboard_Enhanced = () => {
     };
 
     return (
-        <div className="bg-gray-50 min-h-full">
+        <div className="dashboard-theme bg-gray-50 dark:bg-slate-950 min-h-full">
 
             {/* Error Alert */}
             {error && (

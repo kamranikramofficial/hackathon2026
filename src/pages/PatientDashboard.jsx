@@ -317,7 +317,7 @@ const PatientDashboard = () => {
     }
 
     return (
-        <div className="bg-gradient-to-br from-teal-50 to-green-50 min-h-full">
+        <div className="dashboard-theme bg-gradient-to-br from-teal-50 to-green-50 dark:from-slate-900 dark:to-slate-800 min-h-full">
 
             {/* Profile Modal */}
             {showProfile && (

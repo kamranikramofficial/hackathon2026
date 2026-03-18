@@ -131,7 +131,7 @@ const ProfilePage = () => {
     }
 
     return (
-        <div className="max-w-2xl mx-auto p-6">
+        <div className="dashboard-theme max-w-2xl mx-auto p-6">
             {/* Profile Header */}
             <div className={`bg-gradient-to-r ${gradientClass} rounded-xl p-6 mb-6 text-white`}>
                 <div className="flex items-center gap-4">

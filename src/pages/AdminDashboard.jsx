@@ -164,7 +164,7 @@ const AdminDashboard  = () => {
     };
 
     return (
-        <div className="bg-gray-50 p-6">
+        <div className="dashboard-theme bg-gray-50 dark:bg-slate-950 p-6">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex justify-between items-center">
