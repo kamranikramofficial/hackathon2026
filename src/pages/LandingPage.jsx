@@ -2,6 +2,7 @@ import { useState, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, CheckCircle, Stethoscope, BarChart3, Lock, Zap, Cloud, ArrowRight, Star, LogOut, MessageCircle, Phone, Mail, Clock, Send } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
+import api from '../api/axiosInstance';
 
 const LandingPage = () => {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -23,26 +24,12 @@ const LandingPage = () => {
         setError('');
 
         try {
-            // Call backend AI endpoint
-            const response = await fetch('/api/ai/health-advice', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': user ? `Bearer ${localStorage.getItem('token')}` : ''
-                },
-                body: JSON.stringify({
-                    question: userQuestion
-                })
+            // Call backend AI endpoint using axios instance
+            const response = await api.post('/ai/health-advice', {
+                question: userQuestion
             });
 
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Please login to use the AI Assistant');
-                }
-                throw new Error('Failed to get AI response');
-            }
-
-            const data = await response.json();
+            const data = response.data;
             const aiMsg = { 
                 role: 'ai', 
                 text: data.advice || data.message, 
@@ -50,10 +37,23 @@ const LandingPage = () => {
             };
             setChatHistory(prev => [...prev, aiMsg]);
         } catch (err) {
-            setError(err.message);
+            console.error('AI Error:', err);
+            let errorMessage = 'Failed to get AI response';
+            
+            if (err.response?.status === 401) {
+                errorMessage = 'Please login to use the AI Assistant';
+            } else if (err.response?.status === 403) {
+                errorMessage = 'You do not have permission to use this feature';
+            } else if (err.message === 'Network Error') {
+                errorMessage = 'Network error - please check your connection or backend server';
+            } else if (err.message) {
+                errorMessage = err.message;
+            }
+            
+            setError(errorMessage);
             const errorMsg = { 
                 role: 'ai', 
-                text: 'I encountered an error. ' + err.message + ' For support, contact us at support@aiclinicpro.com or call +1-800-CLINIC-1'
+                text: 'Oops! ' + errorMessage + ' 🤖\n\nFor support, contact us at support@aiclinicpro.com or call +1-800-CLINIC-1'
             };
             setChatHistory(prev => [...prev, errorMsg]);
         } finally {
@@ -520,8 +520,33 @@ const LandingPage = () => {
                             </div>
 
                             {error && (
-                                <div className="mb-4 p-3 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg">
-                                    {error}
+                                <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg flex items-start gap-3">
+                                    <div className="flex-1">
+                                        <p className="font-semibold">Error</p>
+                                        <p>{error}</p>
+                                        {error.includes('login') && (
+                                            <Link to="/login" className="mt-2 inline-block bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors">
+                                                Login Now
+                                            </Link>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Auth Required Message */}
+                            {!user && chatHistory.length === 0 && (
+                                <div className="mb-6 p-4 bg-blue-50 border border-blue-300 text-blue-900 rounded-lg">
+                                    <p className="text-sm">
+                                        <span className="font-semibold">💡 Note:</span> To use the AI Assistant, please{' '}
+                                        <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold underline">
+                                            login
+                                        </Link>
+                                        {' '}or{' '}
+                                        <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold underline">
+                                            register
+                                        </Link>
+                                        {' '}first.
+                                    </p>
                                 </div>
                             )}
 
@@ -532,13 +557,13 @@ const LandingPage = () => {
                                         type="text"
                                         value={userQuestion}
                                         onChange={(e) => setUserQuestion(e.target.value)}
-                                        disabled={loading}
-                                        placeholder="Ask me anything about AI Clinic Pro or health..."
+                                        disabled={loading || !user}
+                                        placeholder={user ? "Ask me anything about AI Clinic Pro or health..." : "Login required to use AI"}
                                         className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:bg-slate-100 disabled:cursor-not-allowed"
                                     />
                                     <button
                                         type="submit"
-                                        disabled={loading}
+                                        disabled={loading || !user}
                                         className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
                                     >
                                         <Send className="w-4 h-4" />
@@ -560,8 +585,13 @@ const LandingPage = () => {
                                                 <button
                                                     key={idx}
                                                     type="button"
-                                                    onClick={() => setUserQuestion(question)}
-                                                    className="text-left px-3 py-2 bg-slate-100 hover:bg-indigo-100 border border-slate-300 hover:border-indigo-400 rounded-lg text-sm text-slate-700 hover:text-indigo-700 transition-colors font-medium"
+                                                    onClick={() => user && setUserQuestion(question)}
+                                                    disabled={!user}
+                                                    className={`text-left px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm text-slate-700 transition-colors font-medium ${
+                                                        user
+                                                            ? 'hover:bg-indigo-100 hover:border-indigo-400 hover:text-indigo-700 cursor-pointer'
+                                                            : 'opacity-50 cursor-not-allowed'
+                                                    }`}
                                                 >
                                                     {question}
                                                 </button>
