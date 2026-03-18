@@ -10,6 +10,7 @@ const LandingPage = () => {
     const [chatHistory, setChatHistory] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [chatOpen, setChatOpen] = useState(false);
     const { user, logout } = useContext(AuthContext);
 
     // AI Response handler - calls backend API
@@ -471,145 +472,109 @@ const LandingPage = () => {
                             </div>
                         </div>
                     </div>
-
-                    {/* AI Q&A Section */}
-                    <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-6 text-white">
-                            <div className="flex items-center gap-3">
-                                <MessageCircle className="w-6 h-6" />
-                                <div>
-                                    <h3 className="text-2xl font-bold">AI Medical Assistant</h3>
-                                    <p className="text-sm opacity-90">Ask any health or clinic related questions</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="p-6">
-                            {/* Chat Messages */}
-                            <div className="min-h-64 max-h-96 overflow-y-auto mb-6 bg-slate-50 rounded-lg p-4 border border-slate-200 space-y-3">
-                                {chatHistory.length === 0 && (
-                                    <div className="flex items-center justify-center h-64 text-slate-400">
-                                        <p className="text-center">Start a conversation with the AI Assistant...</p>
-                                    </div>
-                                )}
-                                {chatHistory.map((msg, idx) => (
-                                    <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                                        <div className={`max-w-xs px-4 py-3 rounded-lg ${
-                                            msg.role === 'user'
-                                                ? 'bg-indigo-600 text-white rounded-br-none'
-                                                : 'bg-emerald-100 text-slate-900 rounded-bl-none'
-                                        }`}>
-                                            <p className="text-sm leading-relaxed">{msg.text}</p>
-                                            {msg.disclaimer && (
-                                                <p className="text-xs mt-2 opacity-75 italic">{msg.disclaimer}</p>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                                {loading && (
-                                    <div className="flex justify-start">
-                                        <div className="bg-emerald-100 text-slate-900 px-4 py-3 rounded-lg rounded-bl-none">
-                                            <div className="flex gap-1">
-                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"></div>
-                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                                                <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-
-                            {error && (
-                                <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-700 text-sm rounded-lg flex items-start gap-3">
-                                    <div className="flex-1">
-                                        <p className="font-semibold">Error</p>
-                                        <p>{error}</p>
-                                        {error.includes('login') && (
-                                            <Link to="/login" className="mt-2 inline-block bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700 transition-colors">
-                                                Login Now
-                                            </Link>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Auth Required Message */}
-                            {!user && chatHistory.length === 0 && (
-                                <div className="mb-6 p-4 bg-blue-50 border border-blue-300 text-blue-900 rounded-lg">
-                                    <p className="text-sm">
-                                        <span className="font-semibold">💡 Note:</span> To use the AI Assistant, please{' '}
-                                        <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold underline">
-                                            login
-                                        </Link>
-                                        {' '}or{' '}
-                                        <Link to="/register" className="text-blue-600 hover:text-blue-700 font-semibold underline">
-                                            register
-                                        </Link>
-                                        {' '}first.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Input Form */}
-                            <form onSubmit={handleAiQuestion} className="space-y-4">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={userQuestion}
-                                        onChange={(e) => setUserQuestion(e.target.value)}
-                                        disabled={loading || !user}
-                                        placeholder={user ? "Ask me anything about AI Clinic Pro or health..." : "Login required to use AI"}
-                                        className="flex-1 px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:bg-slate-100 disabled:cursor-not-allowed"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={loading || !user}
-                                        className="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                                    >
-                                        <Send className="w-4 h-4" />
-                                        {loading ? 'Asking...' : 'Send'}
-                                    </button>
-                                </div>
-
-                                {/* Quick Questions */}
-                                {chatHistory.length === 0 && (
-                                    <div className="border-t border-slate-200 pt-4">
-                                        <p className="text-sm font-medium text-slate-700 mb-3">Try asking about:</p>
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                            {[
-                                                'What can AI Clinic Pro help with?',
-                                                'Is the system secure for patient data?',
-                                                'How does the offline feature work?',
-                                                'Tell me about support availability'
-                                            ].map((question, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    type="button"
-                                                    onClick={() => user && setUserQuestion(question)}
-                                                    disabled={!user}
-                                                    className={`text-left px-3 py-2 bg-slate-100 border border-slate-300 rounded-lg text-sm text-slate-700 transition-colors font-medium ${
-                                                        user
-                                                            ? 'hover:bg-indigo-100 hover:border-indigo-400 hover:text-indigo-700 cursor-pointer'
-                                                            : 'opacity-50 cursor-not-allowed'
-                                                    }`}
-                                                >
-                                                    {question}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </form>
-
-                            {user && (
-                                <p className="text-xs text-slate-500 mt-4 text-center">
-                                    Responses powered by AI - Please consult healthcare professionals for medical advice
-                                </p>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </section>
+
+            {/* Floating Chat Widget */}
+            {!chatOpen && (
+                <button
+                    onClick={() => setChatOpen(true)}
+                    className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-full shadow-lg hover:shadow-xl transition-all flex items-center justify-center text-white hover:scale-110 z-40"
+                >
+                    <MessageCircle className="w-7 h-7" />
+                </button>
+            )}
+
+            {/* Chat Modal */}
+            {chatOpen && (
+                <div className="fixed bottom-6 right-6 w-96 max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50 flex flex-col h-96">
+                    {/* Chat Header */}
+                    <div className="bg-gradient-to-r from-indigo-600 to-purple-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <MessageCircle className="w-6 h-6" />
+                            <div>
+                                <h3 className="font-bold text-lg">AI Medical Assistant</h3>
+                                <p className="text-xs opacity-90">Ask any health or clinic questions</p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => setChatOpen(false)}
+                            className="p-1 hover:bg-white/20 rounded-lg transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Chat Messages */}
+                    <div className="flex-1 overflow-y-auto p-4 bg-slate-50 space-y-3">
+                        {chatHistory.length === 0 && (
+                            <div className="flex items-center justify-center h-full text-slate-400">
+                                <p className="text-center text-sm">Start a conversation with the AI Assistant...</p>
+                            </div>
+                        )}
+                        {chatHistory.map((msg, idx) => (
+                            <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                <div className={`max-w-xs px-4 py-2 rounded-lg ${
+                                    msg.role === 'user'
+                                        ? 'bg-indigo-600 text-white rounded-br-none'
+                                        : 'bg-emerald-100 text-slate-900 rounded-bl-none'
+                                }`}>
+                                    <p className="text-sm leading-relaxed">{msg.text}</p>
+                                    {msg.disclaimer && (
+                                        <p className="text-xs mt-1 opacity-75 italic">{msg.disclaimer}</p>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                        {loading && (
+                            <div className="flex justify-start">
+                                <div className="bg-emerald-100 text-slate-900 px-4 py-2 rounded-lg rounded-bl-none">
+                                    <div className="flex gap-1">
+                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce"></div>
+                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                                        <div className="w-2 h-2 bg-slate-900 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Error Message */}
+                    {error && (
+                        <div className="mx-4 mt-2 p-2 bg-red-100 border border-red-300 text-red-700 text-xs rounded-lg">
+                            {error} {error.includes('login') && <Link to="/login" className="text-red-600 hover:text-red-800 font-semibold"> Login</Link>}
+                        </div>
+                    )}
+
+                    {/* Auth Message */}
+                    {!user && chatHistory.length === 0 && (
+                        <div className="mx-4 mb-3 p-2 bg-blue-50 border border-blue-300 text-blue-900 text-xs rounded-lg">
+                            Please <Link to="/login" className="text-blue-600 hover:text-blue-700 font-semibold underline">login</Link> to use AI
+                        </div>
+                    )}
+
+                    {/* Input Form */}
+                    <form onSubmit={handleAiQuestion} className="p-4 border-t border-slate-200 bg-white">
+                        <div className="flex gap-2">
+                            <input
+                                type="text"
+                                value={userQuestion}
+                                onChange={(e) => setUserQuestion(e.target.value)}
+                                disabled={loading || !user}
+                                placeholder={user ? "Ask anything..." : "Login to ask"}
+                                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all disabled:bg-slate-100 disabled:cursor-not-allowed text-sm"
+                            />
+                            <button
+                                type="submit"
+                                disabled={loading || !user}
+                                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium flex items-center gap-1 disabled:bg-slate-400 disabled:cursor-not-allowed"
+                            >
+                                <Send className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             {/* Footer */}
             <footer className="bg-slate-900 text-slate-300 py-12 border-t border-slate-800">
