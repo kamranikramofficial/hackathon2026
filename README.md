@@ -2,7 +2,7 @@
 
 A modern, full-stack clinic management platform with role-based dashboards (Admin, Doctor, Receptionist, Patient), AI-powered assistant, appointment management, prescription handling, analytics, and secure authentication.
 
-**Live Demo:** [Frontend deployed URL]  
+**Live Demo:** https://hackathon2026-tr98.vercel.app/
 **Backend API:** https://hackathon-server-4c7a.onrender.com
 
 ---
@@ -420,19 +420,19 @@ Optional - Demo mode works without email!
 ```
 Admin:
 email: admin@clinic.com
-password: admin123
+password: password
 
 Doctor:
 email: doctor@clinic.com
-password: doctor123
+password: password
 
 Patient:
 email: patient@clinic.com
-password: patient123
+password: password
 
 Receptionist:
 email: receptionist@clinic.com
-password: receptionist123
+password: password
 ```
 
 ---
