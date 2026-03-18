@@ -14,29 +14,34 @@
 
 @layer components {
   .dark .dashboard-theme .bg-white {
-    background-color: #0f172a;
+    background-color: #1e293b;
   }
 
   .dark .dashboard-theme .bg-gray-50,
   .dark .dashboard-theme .bg-slate-50 {
-    background-color: #020617;
+    background-color: #0f172a;
+  }
+
+  .dark .dashboard-theme .bg-gray-100,
+  .dark .dashboard-theme .bg-slate-100 {
+    background-color: #1e293b;
   }
 
   .dark .dashboard-theme .border-gray-100,
   .dark .dashboard-theme .border-gray-200,
   .dark .dashboard-theme .border-slate-100,
   .dark .dashboard-theme .border-slate-200 {
-    border-color: #334155;
+    border-color: #475569;
   }
 
   .dark .dashboard-theme .text-gray-900,
   .dark .dashboard-theme .text-slate-900 {
-    color: #f8fafc;
+    color: #f1f5f9;
   }
 
   .dark .dashboard-theme .text-gray-700,
   .dark .dashboard-theme .text-slate-700 {
-    color: #cbd5e1;
+    color: #e2e8f0;
   }
 
   .dark .dashboard-theme .text-gray-600,
@@ -44,19 +49,19 @@
   .dark .dashboard-theme .text-slate-600,
   .dark .dashboard-theme .text-slate-500,
   .dark .dashboard-theme .text-slate-400 {
-    color: #94a3b8;
+    color: #cbd5e1;
   }
 
   .dark .dashboard-theme .hover\:bg-gray-100:hover,
   .dark .dashboard-theme .hover\:bg-slate-100:hover {
-    background-color: #1e293b;
+    background-color: #334155;
   }
 
   .dark .dashboard-theme input,
   .dark .dashboard-theme select,
   .dark .dashboard-theme textarea {
-    background-color: #0f172a;
-    color: #f8fafc;
-    border-color: #334155;
+    background-color: #1e293b;
+    color: #f1f5f9;
+    border-color: #475569;
   }
 }
