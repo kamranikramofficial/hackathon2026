@@ -34,8 +34,9 @@ const ResetPassword = () => {
 
         setLoading(true);
         try {
+            const normalizedEmail = email.trim().toLowerCase();
             const res = await api.post('/auth/reset-password', {
-                email,
+                email: normalizedEmail,
                 otp,
                 newPassword
             });

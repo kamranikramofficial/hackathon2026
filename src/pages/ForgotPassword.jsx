@@ -17,11 +17,12 @@ const ForgotPassword = () => {
         setLoading(true);
 
         try {
-            const res = await api.post('/auth/forgot-password', { email });
+            const normalizedEmail = email.trim().toLowerCase();
+            const res = await api.post('/auth/forgot-password', { email: normalizedEmail });
             setMessage({ type: 'success', text: res.data.message });
             // Navigate to reset page after short delay
             setTimeout(() => {
-                navigate('/reset-password', { state: { email } });
+                navigate('/reset-password', { state: { email: normalizedEmail } });
             }, 1500);
         } catch (error) {
             setMessage({
