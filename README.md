@@ -2,7 +2,7 @@
 
 A modern, full-stack clinic management platform with role-based dashboards (Admin, Doctor, Receptionist, Patient), AI-powered assistant, appointment management, prescription handling, analytics, and secure authentication.
 
-**Live Demo:** https://hackathon2026-tr98.vercel.app/
+**Live Demo:** https://ai-clinic-pro.vercel.app/
 **Backend API:** https://hackathon-server-4c7a.onrender.com
 
 ---
