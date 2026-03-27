@@ -47,10 +47,22 @@ api.interceptors.request.use(
 api.interceptors.response.use(
     (response) => response,
     (error) => {
-        if (error.response?.status === 401) {
-            // Token expired or invalid - clear cookie and redirect
+        const status = error.response?.status;
+        const requestUrl = error.config?.url || '';
+        const isPublicAuthEndpoint =
+            requestUrl.includes('/auth/login') ||
+            requestUrl.includes('/auth/register') ||
+            requestUrl.includes('/auth/forgot-password') ||
+            requestUrl.includes('/auth/reset-password');
+
+        if (status === 401 && !isPublicAuthEndpoint) {
+            // For protected routes only: clear auth and redirect to login.
             Cookies.remove('user');
-            window.location.href = '/login';
+            cachedUser = null;
+
+            if (window.location.pathname !== '/login') {
+                window.location.href = '/login';
+            }
         }
         return Promise.reject(error);
     }
