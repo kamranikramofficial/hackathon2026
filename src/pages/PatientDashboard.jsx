@@ -427,7 +427,7 @@ const PatientDashboard = () => {
                                 </div>
                                 {profileData.allergies && (
                                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                                        <p className="text-xs text-red-600 font-bold">⚠️ ALLERGIES</p>
+                                        <p className="text-xs text-red-600 font-bold">  ALLERGIES</p>
                                         <p className="text-sm text-red-700">{profileData.allergies}</p>
                                     </div>
                                 )}
