@@ -38,6 +38,12 @@ const Login = () => {
             const response = await api.post('/auth/login', { email, password });
             const userData = response.data;
 
+            if (!userData || !userData.email) {
+                setError('Invalid response from server');
+                setLoading(false);
+                return;
+            }
+
             login(userData);
 
             // Route based on role
@@ -49,8 +55,9 @@ const Login = () => {
                 default: navigate('/'); break;
             }
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to login');
-        } finally {
+            console.error('Login error:', err);
+            const errorMessage = err.response?.data?.message || err.message || 'Invalid email or password';
+            setError(errorMessage);
             setLoading(false);
         }
     };
