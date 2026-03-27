@@ -6,7 +6,7 @@ export const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:50
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
-    timeout: 10000,
+    timeout: 20000, // 20 seconds - enough for slow hosting but not too long
 });
 
 // Cache parsed user to avoid repeated JSON parsing
