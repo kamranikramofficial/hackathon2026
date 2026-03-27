@@ -6,28 +6,41 @@ export const BACKEND_URL = (import.meta.env.VITE_API_URL || 'http://localhost:50
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    timeout: 10000,
 });
+
+// Cache parsed user to avoid repeated JSON parsing
+let cachedUser = null;
 
 // Add a request interceptor to inject the JWT token
 api.interceptors.request.use(
     (config) => {
-        const user = Cookies.get('user');
-        if (user) {
-            try {
-                const parsedUser = JSON.parse(user);
-                if (parsedUser.token) {
-                    config.headers.Authorization = `Bearer ${parsedUser.token}`;
+        const userCookie = Cookies.get('user');
+        
+        // Use cache if available and matches cookie
+        if (!cachedUser || cachedUser.raw !== userCookie) {
+            if (userCookie) {
+                try {
+                    cachedUser = {
+                        data: JSON.parse(userCookie),
+                        raw: userCookie
+                    };
+                } catch (e) {
+                    console.error('Error parsing user cookie:', e);
+                    Cookies.remove('user');
+                    cachedUser = null;
                 }
-            } catch (e) {
-                console.error('Error parsing user cookie:', e);
-                Cookies.remove('user');
+            } else {
+                cachedUser = null;
             }
+        }
+        
+        if (cachedUser?.data?.token) {
+            config.headers.Authorization = `Bearer ${cachedUser.data.token}`;
         }
         return config;
     },
-    (error) => {
-        return Promise.reject(error);
-    }
+    (error) => Promise.reject(error)
 );
 
 // Add response interceptor to handle auth errors

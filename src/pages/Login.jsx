@@ -1,4 +1,4 @@
-import { useState, useContext, useEffect } from 'react';
+import { useState, useContext, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -18,18 +18,19 @@ const Login = () => {
 
     // Redirect if already logged in
     useEffect(() => {
-        if (user) {
-            switch (user.role) {
-                case 'Admin': navigate('/admin'); break;
-                case 'Doctor': navigate('/doctor'); break;
-                case 'Receptionist': navigate('/receptionist'); break;
-                case 'Patient': navigate('/patient'); break;
-                default: navigate('/'); break;
-            }
+        if (user?.role) {
+            const navigationMap = {
+                'Admin': '/admin',
+                'Doctor': '/doctor',
+                'Receptionist': '/receptionist',
+                'Patient': '/patient'
+            };
+            const path = navigationMap[user.role] || '/';
+            navigate(path, { replace: true });
         }
-    }, [user, navigate]);
+    }, [user?.role, navigate]);
 
-    const handleLogin = async (e) => {
+    const handleLogin = useCallback(async (e) => {
         e.preventDefault();
         setError('');
         setLoading(true);
@@ -45,22 +46,13 @@ const Login = () => {
             }
 
             login(userData);
-
-            // Route based on role
-            switch (userData.role) {
-                case 'Admin': navigate('/admin'); break;
-                case 'Doctor': navigate('/doctor'); break;
-                case 'Receptionist': navigate('/receptionist'); break;
-                case 'Patient': navigate('/patient'); break;
-                default: navigate('/'); break;
-            }
         } catch (err) {
             console.error('Login error:', err);
             const errorMessage = err.response?.data?.message || err.message || 'Invalid email or password';
             setError(errorMessage);
             setLoading(false);
         }
-    };
+    }, [login, email, password]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center p-4 relative">
