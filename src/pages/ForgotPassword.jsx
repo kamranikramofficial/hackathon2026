@@ -25,6 +25,7 @@ const ForgotPassword = () => {
                 navigate('/reset-password', { state: { email: normalizedEmail } });
             }, 1500);
         } catch (error) {
+            console.error('Forgot Password Error:', error.response || error); // Log the full error
             setMessage({
                 type: 'error',
                 text: error.response?.data?.message || 'Failed to send OTP'
