@@ -15,12 +15,6 @@ export default defineConfig({
           'api': ['axios', 'js-cookie']
         }
       }
-    },
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true
-      }
     }
   }
 })
